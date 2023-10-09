@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type Advertisement struct {
 	ID          int
 	Title       string
@@ -9,34 +11,40 @@ type Advertisement struct {
 	Address     string
 	ZipCode     string
 	City        string
-	WorkTime    int
+	WorkTime    time.Duration
 }
 
 type Company struct {
 	ID      int
 	Name    string
-	LogoUrl string
+	LogoURL string
 }
 
 type User struct {
-	Id          int
+	ID          int
 	Email       string
 	Name        string
 	Surname     string
 	Phone       string
-	DateOfBirth string
+	DateOfBirth time.Time
 }
 
 type Account struct {
-	UserId   int
-	Password string
-	Role     string
+	UserID       int
+	PasswordHash string
+	Role         Role
 }
+type Role int
+
+const (
+	RoleUser Role = iota + 1
+	RoleAdmin
+)
 
 type Application struct {
 	ID              int
-	AdvertisementId int
-	ApplicantId     int
+	AdvertisementID int
+	ApplicantID     int
 	Message         string
-	CreatedAt       string
+	CreatedAt       time.Time
 }
