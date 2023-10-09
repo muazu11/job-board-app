@@ -4,7 +4,7 @@ CREATE TABLE advertisements (
     description string,
     company_id int REFERENCES companies(id),
     wage float,
-    adress string,
+    address string,
     zip_code string,
     city string,
     work_time interval,
