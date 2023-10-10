@@ -55,3 +55,10 @@ func (d DB) Exec(ctx context.Context, template string, args any) error {
 	_, err = d.pool.Exec(ctx, sql)
 	return err
 }
+
+func GetAll[T any](ctx context.Context, db DB, tableName string) ([]T, error) {
+	var dest []T
+	args := map[string]string{"table": tableName}
+	err := db.Query(ctx, &dest, "SELECT * FROM .table", args)
+	return dest, err
+}

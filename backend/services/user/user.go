@@ -3,10 +3,12 @@ package user
 import (
 	"context"
 	"encoding/json"
+	"github.com/gofiber/fiber/v2"
+	"golang.org/x/crypto/bcrypt"
 	"jobboard/backend/db"
 	"jobboard/backend/models"
-
-	"github.com/gofiber/fiber/v2"
+	"strconv"
+	"time"
 )
 
 const (
@@ -20,8 +22,87 @@ type service struct {
 
 func Init(server *fiber.App, db db.DB) {
 	service := service{db: db}
-
+	server.Post(apiPathRoot, service.addHandler)
 	server.Get(apiPathRoot, service.getAllHandler)
+	server.Get(apiPathRoot+"/:id", service.getUserHandler)
+	server.Delete(apiPathRoot+"/:id", service.deleteHandler)
+	server.Put(apiPathRoot+"/:id", service.updateHandler) //TODO: Think about rename the route to be more clear or not
+}
+func (s service) updateHandler(c *fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return err
+	}
+	userUpdated := models.User{
+		ID:          id,
+		Email:       c.Context().Value("email").(string),
+		Name:        c.Context().Value("name").(string),
+		Surname:     c.Context().Value("surname").(string),
+		Phone:       c.Context().Value("phone").(string),
+		DateOfBirth: c.Context().Value("dateOfBirth").(time.Time),
+	}
+	err = s.updateUserById(c.Context(), userUpdated)
+	if err != nil {
+		return err
+	}
+	userJson, _ := json.Marshal(map[string]models.User{"user": userUpdated})
+	c.Write(userJson)
+	return nil
+}
+func (s service) getUserHandler(c *fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return err
+	}
+	user, err := s.getUserById(c.Context(), id)
+	if err != nil {
+		return err
+	}
+
+	userJson, _ := json.Marshal(user)
+	c.Write(userJson)
+	return nil
+}
+
+func (s service) deleteHandler(c *fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return err
+	}
+	err = s.deleteUser(c.Context(), id)
+	if err != nil {
+		return err
+	}
+	c.Write(nil)
+	return nil
+}
+
+// :TODO think about transaction
+func (s service) addHandler(c *fiber.Ctx) error {
+	user := models.User{
+		Email:       c.Context().Value("email").(string),
+		Name:        c.Context().Value("name").(string),
+		Surname:     c.Context().Value("surname").(string),
+		Phone:       c.Context().Value("phone").(string),
+		DateOfBirth: c.Context().Value("dateOfBirth").(time.Time),
+	}
+	err := s.newUser(c.Context(), user)
+	if err != nil {
+		return err
+	}
+	password := c.Context().Value("password").(string)
+	hashPwd, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
+	account := models.Account{
+		UserID:       user.ID,
+		PasswordHash: string(hashPwd),
+		Role:         models.RoleUser,
+	}
+	err = s.newAccount(c.Context(), account)
+	if err != nil {
+		return err
+	}
+	c.Write(nil)
+	return nil
 }
 
 func (s service) getAllHandler(c *fiber.Ctx) error {
@@ -35,5 +116,49 @@ func (s service) getAllHandler(c *fiber.Ctx) error {
 }
 
 func (s service) getAll(ctx context.Context) ([]models.User, error) {
-	return db.GetAll[[]models.User](ctx, s.db, tableName)
+	return db.GetAll[models.User](ctx, s.db, tableName)
+}
+
+func (s service) newUser(ctx context.Context, user models.User) error {
+	/*args := map[string]any{"id": user.ID,
+	"email":         user.Email,
+	"name":          user.Name,
+	"surname":       user.Surname,
+	"phone":         user.Phone,
+	"date_of_birth": user.DateOfBirth}
+	*/
+	return s.db.Query(ctx, &user.ID, "INSERT INTO users VALUES (.id, .email, .name, .surname, .phone, .date_of_birth) RETURNING id", user)
+}
+
+func (s service) newAccount(ctx context.Context, account models.Account) error {
+	/*
+		args := map[string]any{"user_id": account.UserID,
+			"password_hash": account.PasswordHash,
+			"role":          account.Role}
+	*/
+	return s.db.Exec(ctx, "INSERT INTO accounts VALUES (.user_id, .password_hash, .role)", account)
+}
+
+func (s service) deleteUser(ctx context.Context, id int) error {
+	args := map[string]any{"id": id}
+	return s.db.Exec(ctx, "DELETE FROM users WHERE id = .id", args)
+}
+
+func (s service) getUserById(ctx context.Context, id int) (models.User, error) {
+	var dest models.User
+	args := map[string]any{"id": id}
+	err := s.db.Query(ctx, &dest, "SELECT * FROM users WHERE id = .id", args)
+	return dest, err
+}
+
+func (s service) updateUserById(ctx context.Context, user models.User) error {
+	/*
+		args := map[string]any{"id": id,
+			"email":         user.Email,
+			"name":          user.Name,
+			"surname":       user.Surname,
+			"phone":         user.Phone,
+			"date_of_birth": user.DateOfBirth}
+	*/
+	return s.db.Exec(ctx, "UPDATE users SET email = .email, name = .name, surname = .surname, phone = .phone, date_of_birth = .date_of_birth WHERE id = .id", user)
 }

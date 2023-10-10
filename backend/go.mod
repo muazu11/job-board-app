@@ -5,6 +5,7 @@ go 1.21.1
 require (
 	github.com/georgysavva/scany/v2 v2.0.0
 	github.com/gofiber/fiber/v2 v2.49.2
+	golang.org/x/crypto v0.14.0
 )
 
 require (
@@ -15,7 +16,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/sync v0.2.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 )
 
 require (
@@ -33,5 +34,5 @@ require (
 	github.com/valyala/fasthttp v1.49.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	github.com/z0ne-dev/mgx v1.0.0
-	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
 )
