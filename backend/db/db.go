@@ -62,3 +62,14 @@ func GetAll[T any](ctx context.Context, db DB, tableName string) ([]T, error) {
 	err := db.Query(ctx, &dest, "SELECT * FROM .table", args)
 	return dest, err
 }
+
+func GetById[T any](ctx context.Context, db DB, tableName string, id int) (T, error) {
+	var dest T
+	args := map[string]any{"table": tableName, "id": id}
+	err := db.Query(ctx, &dest, "SELECT * FROM .table WHERE id = .id", args)
+	return dest, err
+}
+func DeleteById(ctx context.Context, db DB, tableName string, id int) error {
+	args := map[string]any{"table": tableName, "id": id}
+	return db.Exec(ctx, "DELETE FROM .table WHERE id = .id", args)
+}

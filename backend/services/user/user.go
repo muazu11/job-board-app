@@ -6,9 +6,29 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/crypto/bcrypt"
 	"jobboard/backend/db"
-	"jobboard/backend/models"
 	"strconv"
 	"time"
+)
+
+type User struct {
+	ID          int
+	Email       string
+	Name        string
+	Surname     string
+	Phone       string
+	DateOfBirth time.Time
+}
+
+type Account struct {
+	UserID       int
+	PasswordHash string
+	Role         Role
+}
+type Role int
+
+const (
+	RoleUser Role = iota + 1
+	RoleAdmin
 )
 
 const (
@@ -22,18 +42,18 @@ type service struct {
 
 func Init(server *fiber.App, db db.DB) {
 	service := service{db: db}
-	server.Post(apiPathRoot, service.addHandler)
+	server.Post(apiPathRoot, service.add)
 	server.Get(apiPathRoot, service.getAllHandler)
-	server.Get(apiPathRoot+"/:id", service.getUserHandler)
-	server.Delete(apiPathRoot+"/:id", service.deleteHandler)
-	server.Put(apiPathRoot+"/:id", service.updateHandler) //TODO: Think about rename the route to be more clear or not
+	server.Get(apiPathRoot+"/:id", service.get)
+	server.Delete(apiPathRoot+"/:id", service.delete)
+	server.Put(apiPathRoot+"/:id", service.update) //TODO: Think about rename the route to be more clear or not
 }
-func (s service) updateHandler(c *fiber.Ctx) error {
+func (s service) update(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return err
 	}
-	userUpdated := models.User{
+	userUpdated := User{
 		ID:          id,
 		Email:       c.Context().Value("email").(string),
 		Name:        c.Context().Value("name").(string),
@@ -45,11 +65,11 @@ func (s service) updateHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	userJson, _ := json.Marshal(map[string]models.User{"user": userUpdated})
+	userJson, _ := json.Marshal(map[string]User{"user": userUpdated})
 	c.Write(userJson)
 	return nil
 }
-func (s service) getUserHandler(c *fiber.Ctx) error {
+func (s service) get(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return err
@@ -64,7 +84,7 @@ func (s service) getUserHandler(c *fiber.Ctx) error {
 	return nil
 }
 
-func (s service) deleteHandler(c *fiber.Ctx) error {
+func (s service) delete(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return err
@@ -78,8 +98,8 @@ func (s service) deleteHandler(c *fiber.Ctx) error {
 }
 
 // :TODO think about transaction
-func (s service) addHandler(c *fiber.Ctx) error {
-	user := models.User{
+func (s service) add(c *fiber.Ctx) error {
+	user := User{
 		Email:       c.Context().Value("email").(string),
 		Name:        c.Context().Value("name").(string),
 		Surname:     c.Context().Value("surname").(string),
@@ -92,10 +112,10 @@ func (s service) addHandler(c *fiber.Ctx) error {
 	}
 	password := c.Context().Value("password").(string)
 	hashPwd, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
-	account := models.Account{
+	account := Account{
 		UserID:       user.ID,
 		PasswordHash: string(hashPwd),
-		Role:         models.RoleUser,
+		Role:         RoleUser,
 	}
 	err = s.newAccount(c.Context(), account)
 	if err != nil {
@@ -115,11 +135,11 @@ func (s service) getAllHandler(c *fiber.Ctx) error {
 	return nil
 }
 
-func (s service) getAll(ctx context.Context) ([]models.User, error) {
-	return db.GetAll[models.User](ctx, s.db, tableName)
+func (s service) getAll(ctx context.Context) ([]User, error) {
+	return db.GetAll[User](ctx, s.db, tableName)
 }
 
-func (s service) newUser(ctx context.Context, user models.User) error {
+func (s service) newUser(ctx context.Context, user User) error {
 	/*args := map[string]any{"id": user.ID,
 	"email":         user.Email,
 	"name":          user.Name,
@@ -127,16 +147,16 @@ func (s service) newUser(ctx context.Context, user models.User) error {
 	"phone":         user.Phone,
 	"date_of_birth": user.DateOfBirth}
 	*/
-	return s.db.Query(ctx, &user.ID, "INSERT INTO users VALUES (.id, .email, .name, .surname, .phone, .date_of_birth) RETURNING id", user)
+	return s.db.Query(ctx, &user.ID, "INSERT INTO users VALUES (.Email, .Name, .Surname, .Phone, .DateOfBirth) RETURNING id", user)
 }
 
-func (s service) newAccount(ctx context.Context, account models.Account) error {
+func (s service) newAccount(ctx context.Context, account Account) error {
 	/*
 		args := map[string]any{"user_id": account.UserID,
 			"password_hash": account.PasswordHash,
 			"role":          account.Role}
 	*/
-	return s.db.Exec(ctx, "INSERT INTO accounts VALUES (.user_id, .password_hash, .role)", account)
+	return s.db.Exec(ctx, "INSERT INTO accounts VALUES (.UserID, .PasswordHash, .role)", account)
 }
 
 func (s service) deleteUser(ctx context.Context, id int) error {
@@ -144,14 +164,14 @@ func (s service) deleteUser(ctx context.Context, id int) error {
 	return s.db.Exec(ctx, "DELETE FROM users WHERE id = .id", args)
 }
 
-func (s service) getUserById(ctx context.Context, id int) (models.User, error) {
-	var dest models.User
+func (s service) getUserById(ctx context.Context, id int) (User, error) {
+	var dest User
 	args := map[string]any{"id": id}
 	err := s.db.Query(ctx, &dest, "SELECT * FROM users WHERE id = .id", args)
 	return dest, err
 }
 
-func (s service) updateUserById(ctx context.Context, user models.User) error {
+func (s service) updateUserById(ctx context.Context, user User) error {
 	/*
 		args := map[string]any{"id": id,
 			"email":         user.Email,
@@ -160,5 +180,5 @@ func (s service) updateUserById(ctx context.Context, user models.User) error {
 			"phone":         user.Phone,
 			"date_of_birth": user.DateOfBirth}
 	*/
-	return s.db.Exec(ctx, "UPDATE users SET email = .email, name = .name, surname = .surname, phone = .phone, date_of_birth = .date_of_birth WHERE id = .id", user)
+	return s.db.Exec(ctx, "UPDATE users SET email = .Email, name = .Name, surname = .Surname, phone = .Phone, date_of_birth = .DateOfBirth WHERE id = .id", user)
 }
