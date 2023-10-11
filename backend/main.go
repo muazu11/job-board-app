@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"jobboard/backend/config"
 	"jobboard/backend/db"
 	"jobboard/backend/server"
@@ -12,7 +13,7 @@ import (
 
 func main() {
 	config := config.New()
-	server := server.New(config.Server)
+	server := server.New()
 	db := db.New(config.DB)
 
 	user.Init(server, db)
@@ -20,5 +21,5 @@ func main() {
 	application.Init(server, db)
 	company.Init(server, db)
 
-	<-(chan struct{})(nil)
+	server.Listen(fmt.Sprintf(":%d", config.Server.Port))
 }

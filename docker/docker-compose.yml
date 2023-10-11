@@ -31,6 +31,7 @@ services:
       dockerfile: docker/backend.Dockerfile
     environment:
       SERVER_PORT: ${API_PORT}
+      SERVER_LOGS: ${API_LOGS}
 
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}

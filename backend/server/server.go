@@ -1,22 +1,20 @@
 package server
 
 import (
-	"fmt"
-
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
 type Config struct {
 	Port int
+	Logs bool
 }
 
 func New(config Config) *fiber.App {
 	server := fiber.New()
-	go func() {
-		err := server.Listen(fmt.Sprintf(":%d", config.Port))
-		if err != nil {
-			panic(err)
-		}
-	}()
+	if config.Logs {
+		server.Use(logger.New())
+	}
+
 	return server
 }
