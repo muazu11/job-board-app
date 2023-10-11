@@ -39,20 +39,20 @@ func New(config Config) DB {
 	return db
 }
 
-func (d DB) Query(ctx context.Context, dest any, template string, args any) error {
-	sql, err := gosq.Compile(template, args)
+func (d DB) Query(ctx context.Context, dest any, template string, templateArgs, args any) error {
+	sql, err := gosq.Compile(template, templateArgs)
 	if err != nil {
 		return err
 	}
-	return pgxscan.Select(ctx, d.pool, dest, sql)
+	return pgxscan.Select(ctx, d.pool, dest, sql, args)
 }
 
-func (d DB) Exec(ctx context.Context, template string, args any) error {
-	sql, err := gosq.Compile(template, args)
+func (d DB) Exec(ctx context.Context, template string, templateArgs, args any) error {
+	sql, err := gosq.Compile(template, templateArgs)
 	if err != nil {
 		return err
 	}
-	_, err = d.pool.Exec(ctx, sql)
+	_, err = d.pool.Exec(ctx, sql, args)
 	return err
 }
 
