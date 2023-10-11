@@ -22,14 +22,21 @@ type DB struct {
 
 func New(config Config) DB {
 	connString := fmt.Sprintf(
-		"postgres://%s:%s@%s:%d",
+		"postgres://%s:%s@%s:%d/postgres",
 		config.User, config.Password, config.Host, config.Port,
 	)
 	pool, err := pgxpool.New(context.Background(), connString)
 	if err != nil {
 		panic(err)
 	}
-	return DB{pool: pool}
+
+	db := DB{pool: pool}
+	err = db.migrate()
+	if err != nil {
+		panic(err)
+	}
+
+	return db
 }
 
 func (d DB) Query(ctx context.Context, dest any, template string, args any) error {

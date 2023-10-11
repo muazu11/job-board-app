@@ -10,4 +10,6 @@ func main() {
 	config := config.New()
 	server := server.New(config.Server)
 	db := db.New(config.DB)
+	_, _ = server, db
+	<-(chan struct{})(nil)
 }
