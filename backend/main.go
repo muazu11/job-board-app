@@ -1,15 +1,15 @@
 package main
 
 import (
-	"github.com/gofiber/fiber/v2"
+	"jobboard/backend/config"
+	"jobboard/backend/db"
+	"jobboard/backend/server"
 )
 
 func main() {
-	app := fiber.New()
-
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Hello world!")
-	})
-
-	app.Listen("3000")
+	config := config.New()
+	server := server.New(config.Server)
+	db := db.New(config.DB)
+	_, _ = server, db
+	<-(chan struct{})(nil)
 }
