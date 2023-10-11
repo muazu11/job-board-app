@@ -19,4 +19,6 @@ func main() {
 	advertisement.Init(server, db)
 	application.Init(server, db)
 	company.Init(server, db)
+
+	<-(chan struct{})(nil)
 }
