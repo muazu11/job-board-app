@@ -2,11 +2,11 @@ package advertisement
 
 import (
 	"context"
-	"jobboard/backend/db"
-	"time"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5"
+	"jobboard/backend/db"
+	"jobboard/backend/services/company"
+	"time"
 )
 
 const (
@@ -23,6 +23,22 @@ type Advertisement struct {
 	ZipCode     string
 	City        string
 	WorkTime    time.Duration `json:"WorkTimeNs"`
+}
+
+type AdvertisementsFullInfo struct {
+	/*advertisement Advertisement
+	company       company.Company
+	*/
+	ID          int
+	Title       string
+	Description string
+	CompanyID   int
+	Wage        float64
+	Address     string
+	ZipCode     string
+	City        string
+	WorkTime    time.Duration   `json:"WorkTimeNs"`
+	Company     company.Company `json:"company"`
 }
 
 func (a Advertisement) toArgs() pgx.NamedArgs {
@@ -60,6 +76,7 @@ func Init(server *fiber.App, db db.DB) {
 	service := service{db: db}
 	server.Post(apiPathRoot, service.addHandler)
 	server.Get(apiPathRoot+"/:id", service.getHandler)
+	server.Get(apiPathRoot+"AllInfos", service.showHandler)
 	server.Get(apiPathRoot, service.getAllHandler)
 	server.Put(apiPathRoot+"/:id", service.updateHandler)
 	server.Delete(apiPathRoot+"/:id", service.deleteHandler)
@@ -80,6 +97,14 @@ func (s service) getHandler(c *fiber.Ctx) error {
 		return err
 	}
 	return c.JSON(advertisement)
+}
+
+func (s service) showHandler(c *fiber.Ctx) error {
+	advertisements, err := s.show(c.Context())
+	if err != nil {
+		return err
+	}
+	return c.JSON(advertisements)
 }
 
 func (s service) getAllHandler(c *fiber.Ctx) error {
@@ -123,6 +148,37 @@ func (s service) add(ctx context.Context, advertisement *Advertisement) error {
 func (s service) get(ctx context.Context, id int) (Advertisement, error) {
 	var ret Advertisement
 	err := s.db.QueryOne(ctx, &ret, "SELECT * FROM advertisements WHERE id = $1", nil, id)
+	return ret, err
+}
+
+func (s service) show(ctx context.Context) ([]AdvertisementsFullInfo, error) {
+	advs, err := s.getAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var ret []AdvertisementsFullInfo = make([]AdvertisementsFullInfo, len(advs))
+	for i, adv := range advs {
+		var c company.Company
+		err = s.db.QueryOne(ctx, &c, "SELECT * FROM companies WHERE id = $1", nil, adv.CompanyID)
+		if err != nil {
+			return nil, err
+		}
+		ret[i] = AdvertisementsFullInfo{
+			/*advertisement: adv,
+			company:       c,
+			*/
+			ID:          adv.ID,
+			Title:       adv.Title,
+			Description: adv.Description,
+			CompanyID:   adv.CompanyID,
+			Wage:        adv.Wage,
+			Address:     adv.Address,
+			ZipCode:     adv.ZipCode,
+			City:        adv.City,
+			WorkTime:    adv.WorkTime,
+			Company:     c,
+		}
+	}
 	return ret, err
 }
 
