@@ -1,0 +1,17 @@
+meta {
+  name: UpdateApplication
+  type: http
+  seq: 4
+}
+
+put {
+  url: http://localhost:3000/applications/1?advertisement_id=1&applicant_id=1&message=Bonjour, embauchez moi svp.
+  body: none
+  auth: none
+}
+
+query {
+  advertisement_id: 1
+  applicant_id: 1
+  message: Bonjour, embauchez moi svp.
+}
