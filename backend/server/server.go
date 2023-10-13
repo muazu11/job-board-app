@@ -15,6 +15,5 @@ func New(config Config) *fiber.App {
 	if config.Logs {
 		server.Use(logger.New())
 	}
-
 	return server
 }

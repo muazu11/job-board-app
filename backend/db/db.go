@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sanggonlee/gosq"
 )
@@ -25,7 +26,12 @@ func New(config Config) DB {
 		"postgres://%s:%s@%s:%d/postgres",
 		config.User, config.Password, config.Host, config.Port,
 	)
-	pool, err := pgxpool.New(context.Background(), connString)
+	pgxConfig, err := pgxpool.ParseConfig(connString)
+	if err != nil {
+		panic(err)
+	}
+	pgxConfig.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeCacheDescribe
+	pool, err := pgxpool.NewWithConfig(context.Background(), pgxConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -39,37 +45,27 @@ func New(config Config) DB {
 	return db
 }
 
-func (d DB) Query(ctx context.Context, dest any, template string, templateArgs, args any) error {
+func (d DB) Query(ctx context.Context, dest any, template string, templateArgs any, args ...any) error {
 	sql, err := gosq.Compile(template, templateArgs)
 	if err != nil {
 		return err
 	}
-	return pgxscan.Select(ctx, d.pool, dest, sql, args)
+	return pgxscan.Select(ctx, d.pool, dest, sql, args...)
 }
 
-func (d DB) Exec(ctx context.Context, template string, templateArgs, args any) error {
+func (d DB) QueryOne(ctx context.Context, dest any, template string, templateArgs any, args ...any) error {
 	sql, err := gosq.Compile(template, templateArgs)
 	if err != nil {
 		return err
 	}
-	_, err = d.pool.Exec(ctx, sql, args)
+	return pgxscan.Get(ctx, d.pool, dest, sql, args...)
+}
+
+func (d DB) Exec(ctx context.Context, template string, templateArgs any, args ...any) error {
+	sql, err := gosq.Compile(template, templateArgs)
+	if err != nil {
+		return err
+	}
+	_, err = d.pool.Exec(ctx, sql, args...)
 	return err
-}
-
-func GetAll[T any](ctx context.Context, db DB, tableName string) ([]T, error) {
-	var dest []T
-	args := map[string]string{"table": tableName}
-	err := db.Query(ctx, &dest, "SELECT * FROM .table", args)
-	return dest, err
-}
-
-func GetById[T any](ctx context.Context, db DB, tableName string, id int) (T, error) {
-	var dest T
-	args := map[string]any{"table": tableName, "id": id}
-	err := db.Query(ctx, &dest, "SELECT * FROM .table WHERE id = .id", args)
-	return dest, err
-}
-func DeleteById(ctx context.Context, db DB, tableName string, id int) error {
-	args := map[string]any{"table": tableName, "id": id}
-	return db.Exec(ctx, "DELETE FROM .table WHERE id = .id", args)
 }

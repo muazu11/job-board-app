@@ -4,29 +4,30 @@ CREATE TYPE role AS ENUM (
 );
 
 CREATE TABLE companies (
-    id int PRIMARY KEY,
-    name text,
+    id serial PRIMARY KEY,
+    name text CHECK (length(name) > 0),
+    siren text UNIQUE CHECK (siren ~ '^\d{9}$'),
     logo_url text
 );
 
 CREATE TABLE users (
-    id int PRIMARY KEY,
-    email text UNIQUE,
-    name text,
-    surname text,
-    phone text,
-    date_of_birth date
+    id serial PRIMARY KEY,
+    email text UNIQUE CHECK (email ~ '^[a-zA-Z0-9\-\.]+@[a-zA-Z0-9\-\.]+\.[a-zA-Z0-9\-\.]+$'),
+    name text CHECK (length(name) > 0),
+    surname text CHECK (length(surname) > 0),
+    phone text CHECK (phone IS NULL OR phone ~ '^(\+\d{2}|0)[1-9]\d{8}$'),
+    date_of_birth date CHECK (date_of_birth < now())
 );
 
 CREATE TABLE account (
-    user_id int PRIMARY KEY REFERENCES users(id),
+    user_id int PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     password_hash text,
     role role
 );   
 
 CREATE TABLE advertisements (
-    id int PRIMARY KEY,
-    title text,
+    id serial PRIMARY KEY,
+    title text CHECK (length(title) > 1),
     description text,
     company_id int REFERENCES companies(id),
     wage float,
@@ -37,8 +38,10 @@ CREATE TABLE advertisements (
 );
 
 CREATE TABLE applications (
+    id serial PRIMARY KEY,
     advertisement_id int REFERENCES advertisements(id),
     applicant_id int REFERENCES users(id),
     message text,
-    created_at timestamptz
+    created_at timestamptz DEFAULT now(),
+    UNIQUE (advertisement_id, applicant_id)
 );

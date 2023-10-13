@@ -2,11 +2,15 @@ package advertisement
 
 import (
 	"context"
-	"encoding/json"
-	"github.com/gofiber/fiber/v2"
 	"jobboard/backend/db"
-	"strconv"
 	"time"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/jackc/pgx/v5"
+)
+
+const (
+	apiPathRoot = "/advertisements"
 )
 
 type Advertisement struct {
@@ -14,17 +18,39 @@ type Advertisement struct {
 	Title       string
 	Description string
 	CompanyID   int
-	Wage        float32
+	Wage        float64
 	Address     string
 	ZipCode     string
 	City        string
-	WorkTime    time.Duration
+	WorkTime    time.Duration `json:"WorkTimeNs"`
 }
 
-const (
-	apiPathRoot = "/advertisement"
-	tableName   = "advertisement"
-)
+func (a Advertisement) toArgs() pgx.NamedArgs {
+	return pgx.NamedArgs{
+		"id":          a.ID,
+		"title":       a.Title,
+		"description": a.Description,
+		"company_id":  a.CompanyID,
+		"wage":        a.Wage,
+		"address":     a.Address,
+		"zip_code":    a.ZipCode,
+		"city":        a.City,
+		"work_time":   a.WorkTime,
+	}
+}
+
+func advertisementFromContext(c *fiber.Ctx) Advertisement {
+	return Advertisement{
+		Title:       c.Query("title"),
+		Description: c.Query("description"),
+		CompanyID:   c.QueryInt("company_id"),
+		Wage:        c.QueryFloat("wage"),
+		Address:     c.Query("address"),
+		ZipCode:     c.Query("zip_code"),
+		City:        c.Query("city"),
+		WorkTime:    time.Duration(c.QueryInt("work_time_ns")),
+	}
+}
 
 type service struct {
 	db db.DB
@@ -33,79 +59,27 @@ type service struct {
 func Init(server *fiber.App, db db.DB) {
 	service := service{db: db}
 	server.Post(apiPathRoot, service.addHandler)
-	server.Get(apiPathRoot, service.getAllHandler)
 	server.Get(apiPathRoot+"/:id", service.getHandler)
+	server.Get(apiPathRoot, service.getAllHandler)
+	server.Put(apiPathRoot+"/:id", service.updateHandler)
 	server.Delete(apiPathRoot+"/:id", service.deleteHandler)
-	server.Put(apiPathRoot+"/:id", service.updateHandler) //TODO: Think about rename the route to be more clear or not
-}
-func (s service) updateHandler(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
-		return err
-	}
-	advertisement := Advertisement{
-		ID:          id,
-		Title:       c.Context().Value("title").(string),
-		Description: c.Context().Value("description").(string),
-		CompanyID:   c.Context().Value("company_id").(int),
-		Wage:        c.Context().Value("wage").(float32),
-		Address:     c.Context().Value("address").(string),
-		ZipCode:     c.Context().Value("zip_code").(string),
-		City:        c.Context().Value("city").(string),
-		WorkTime:    c.Context().Value("work_time").(time.Duration),
-	}
-	err = s.update(c.Context(), advertisement)
-	if err != nil {
-		return err
-	}
-	c.Write(nil)
-	return nil
-}
-func (s service) getHandler(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
-		return err
-	}
-	advertisement, err := db.GetById[Advertisement](c.Context(), s.db, tableName, id)
-	if err != nil {
-		return err
-	}
-
-	advertisementJson, _ := json.Marshal(advertisement)
-	c.Write(advertisementJson)
-	return nil
 }
 
-func (s service) deleteHandler(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
-		return err
-	}
-	err = db.DeleteById(c.Context(), s.db, tableName, id)
-	if err != nil {
-		return err
-	}
-	c.Write(nil)
-	return nil
-}
-
-// :TODO think about transaction
 func (s service) addHandler(c *fiber.Ctx) error {
-	advertisement := Advertisement{
-		Title:       c.Context().Value("title").(string),
-		Description: c.Context().Value("description").(string),
-		CompanyID:   c.Context().Value("company_id").(int),
-		Wage:        c.Context().Value("wage").(float32),
-		Address:     c.Context().Value("address").(string),
-		ZipCode:     c.Context().Value("zip_code").(string),
-		City:        c.Context().Value("city").(string),
-		WorkTime:    c.Context().Value("work_time").(time.Duration),
-	}
-	err := s.add(c.Context(), advertisement)
+	advertisement := advertisementFromContext(c)
+	return s.add(c.Context(), &advertisement)
+}
+
+func (s service) getHandler(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
 	if err != nil {
 		return err
 	}
-	return nil
+	advertisement, err := s.get(c.Context(), id)
+	if err != nil {
+		return err
+	}
+	return c.JSON(advertisement)
 }
 
 func (s service) getAllHandler(c *fiber.Ctx) error {
@@ -113,31 +87,62 @@ func (s service) getAllHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	advertisementsJson, _ := json.Marshal(advertisements)
-	c.Write(advertisementsJson)
-	return nil
+	return c.JSON(advertisements)
 }
 
-func (s service) getAll(ctx context.Context) ([]Advertisement, error) {
-	return db.GetAll[Advertisement](ctx, s.db, tableName)
+func (s service) updateHandler(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return err
+	}
+	advertisement := advertisementFromContext(c)
+	advertisement.ID = id
+	return s.update(c.Context(), advertisement)
 }
 
-func (s service) add(ctx context.Context, advertisement Advertisement) error {
-	return s.db.Query(ctx, &advertisement.ID, "INSERT INTO advertisements VALUES (.Title, .Description, .CompanyId, .Wage, .Address, .ZipCode, .City, .WorkTime) RETURNING id", advertisement)
+func (s service) deleteHandler(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return err
+	}
+	return s.delete(c.Context(), id)
 }
 
-func (s service) delete(ctx context.Context, id int) error {
-	args := map[string]any{"id": id}
-	return s.db.Exec(ctx, "DELETE FROM advertisements WHERE id = .id", args)
+func (s service) add(ctx context.Context, advertisement *Advertisement) error {
+	return s.db.QueryOne(
+		ctx, &advertisement.ID, `
+		INSERT INTO advertisements
+		VALUES (
+			DEFAULT, @title, @description, @company_id, @wage, @address, @zip_code, @city, @work_time
+		)
+		RETURNING id`,
+		nil, advertisement.toArgs(),
+	)
 }
 
 func (s service) get(ctx context.Context, id int) (Advertisement, error) {
-	var dest Advertisement
-	args := map[string]any{"id": id}
-	err := s.db.Query(ctx, &dest, "SELECT * FROM advertisements WHERE id = .id", args)
-	return dest, err
+	var ret Advertisement
+	err := s.db.QueryOne(ctx, &ret, "SELECT * FROM advertisements WHERE id = $1", nil, id)
+	return ret, err
+}
+
+func (s service) getAll(ctx context.Context) ([]Advertisement, error) {
+	var ret []Advertisement
+	err := s.db.Query(ctx, &ret, "SELECT * FROM advertisements", nil)
+	return ret, err
 }
 
 func (s service) update(ctx context.Context, advertisement Advertisement) error {
-	return s.db.Exec(ctx, "UPDATE advertisements SET  title = .Title, description = .Description , company_id = .CompanyID, wage = .Wage, address = .Address, zip_code = .ZipCode, city = .city, work_time = WorkTime WHERE id = .ID", advertisement)
+	return s.db.Exec(
+		ctx, `
+		UPDATE advertisements
+		SET title = @title, description = @description, company_id = @company_id, wage = @wage,
+			address = @address, zip_code = @zip_code, city = @city, work_time = @work_time
+		WHERE id = @id`,
+		nil, advertisement.toArgs(),
+	)
+}
+
+func (s service) delete(ctx context.Context, id int) error {
+	return s.db.Exec(ctx, "DELETE FROM advertisements WHERE id = $1", nil, id)
 }
