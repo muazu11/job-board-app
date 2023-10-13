@@ -1,0 +1,22 @@
+meta {
+  name: AddAdvertisement
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:3000/advertisements?title=Développeur web&description=Poste à pourvoir maintenant.&company_id=1&wage=2000&address=5 rue des Lilas&city=Paris&zip_code=75100&work_time_ns=126000000000000
+  body: none
+  auth: none
+}
+
+query {
+  title: Développeur web
+  description: Poste à pourvoir maintenant.
+  company_id: 1
+  wage: 2000
+  address: 5 rue des Lilas
+  city: Paris
+  zip_code: 75100
+  work_time_ns: 126000000000000
+}

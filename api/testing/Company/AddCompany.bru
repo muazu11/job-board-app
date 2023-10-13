@@ -1,0 +1,17 @@
+meta {
+  name: AddCompany
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:3000/companies?name=testos&logo_url=https://testos.com/logo.png&siren=123456789
+  body: none
+  auth: none
+}
+
+query {
+  name: testos
+  logo_url: https://testos.com/logo.png
+  siren: 123456789
+}

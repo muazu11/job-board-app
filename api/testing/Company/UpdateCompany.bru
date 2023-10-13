@@ -1,0 +1,17 @@
+meta {
+  name: UpdateCompany
+  type: http
+  seq: 4
+}
+
+put {
+  url: http://localhost:3000/companies/1?name=testos&logo_url=https://testos.com/logo2.png&siren=123456789
+  body: none
+  auth: none
+}
+
+query {
+  name: testos
+  logo_url: https://testos.com/logo2.png
+  siren: 123456789
+}
