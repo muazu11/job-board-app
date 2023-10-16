@@ -21,9 +21,9 @@ func main() {
 	adminAuthorizer := auth.NewMiddleware(user.RoleAdmin.String())
 
 	user.Init(server, db, adminAuthorizer)
-	advertisement.Init(server, db)
-	application.Init(server, db)
-	company.Init(server, db)
+	advertisement.Init(server, db, adminAuthorizer)
+	application.Init(server, db, adminAuthorizer)
+	company.Init(server, db, adminAuthorizer)
 
 	server.Listen(fmt.Sprintf(":%d", config.Server.Port))
 }
