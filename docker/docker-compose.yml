@@ -17,9 +17,12 @@ services:
     build:
       context: ../
       dockerfile: docker/backend.Dockerfile
-    depends-on:
+    depends_on:
       - postgres
     environment:
+      SERVICES_ADMIN_EMAIL: ${ADMIN_EMAIL}
+      SERVICES_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+
       SERVER_PORT: ${API_PORT}
       SERVER_LOGS: ${API_LOGS}
 

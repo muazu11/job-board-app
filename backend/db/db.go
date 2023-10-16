@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"jobboard/backend/services"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5"
@@ -21,7 +22,7 @@ type DB struct {
 	pool *pgxpool.Pool
 }
 
-func New(config Config) DB {
+func New(config Config, servicesConfig services.Config) DB {
 	connString := fmt.Sprintf(
 		"postgres://%s:%s@%s:%d/postgres",
 		config.User, config.Password, config.Host, config.Port,
@@ -37,7 +38,7 @@ func New(config Config) DB {
 	}
 
 	db := DB{pool: pool}
-	err = db.migrate()
+	err = db.migrate(servicesConfig)
 	if err != nil {
 		panic(err)
 	}
