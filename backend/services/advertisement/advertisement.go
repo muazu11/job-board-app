@@ -65,12 +65,12 @@ func Init(server *fiber.App, db db.DB, adminAuthorizer fiber.Handler) {
 	service := service{db: db}
 
 	server.Post(apiPathRoot, adminAuthorizer, service.addHandler)
-	server.Get(apiPathRoot+"/:id", adminAuthorizer, service.getHandler)
+	server.Get(apiPathRoot+"/:id<int>", adminAuthorizer, service.getHandler)
 	server.Get(apiPathRoot, adminAuthorizer, service.getAllHandler)
-	server.Put(apiPathRoot+"/:id", adminAuthorizer, service.updateHandler)
-	server.Delete(apiPathRoot+"/:id", adminAuthorizer, service.deleteHandler)
+	server.Put(apiPathRoot+"/:id<int>", adminAuthorizer, service.updateHandler)
+	server.Delete(apiPathRoot+"/:id<int>", adminAuthorizer, service.deleteHandler)
 
-	server.Get(apiPathRoot+"WithCompany", service.showHandler)
+	server.Get(apiPathRoot+"/with_company", service.getWithCompanyHandler)
 }
 
 func (s service) addHandler(c *fiber.Ctx) error {
@@ -90,8 +90,8 @@ func (s service) getHandler(c *fiber.Ctx) error {
 	return c.JSON(advertisement)
 }
 
-func (s service) showHandler(c *fiber.Ctx) error {
-	advertisements, err := s.show(c.Context())
+func (s service) getWithCompanyHandler(c *fiber.Ctx) error {
+	advertisements, err := s.getWithCompany(c.Context())
 	if err != nil {
 		return err
 	}
@@ -142,12 +142,6 @@ func (s service) get(ctx context.Context, id int) (Advertisement, error) {
 	return ret, err
 }
 
-func (s service) show(ctx context.Context) ([]CompanyAdvertisement, error) {
-	var ret []CompanyAdvertisement
-	err := s.db.Query(ctx, &ret, "SELECT advertisements.*, companies.logo_url, companies.name FROM advertisements JOIN companies on companies.id = advertisements.company_id", nil)
-	return ret, err
-}
-
 func (s service) getAll(ctx context.Context) ([]Advertisement, error) {
 	var ret []Advertisement
 	err := s.db.Query(ctx, &ret, "SELECT * FROM advertisements", nil)
@@ -167,4 +161,16 @@ func (s service) update(ctx context.Context, advertisement Advertisement) error 
 
 func (s service) delete(ctx context.Context, id int) error {
 	return s.db.Exec(ctx, "DELETE FROM advertisements WHERE id = $1", nil, id)
+}
+
+func (s service) getWithCompany(ctx context.Context) ([]CompanyAdvertisement, error) {
+	var ret []CompanyAdvertisement
+	err := s.db.Query(
+		ctx, &ret, `
+		SELECT advertisements.*, companies.logo_url, companies.name
+		FROM advertisements
+		JOIN companies on companies.id = advertisements.company_id`,
+		nil,
+	)
+	return ret, err
 }

@@ -105,10 +105,10 @@ func Init(server *fiber.App, db db.DB, adminAuthorizer fiber.Handler) {
 	service := service{db: db}
 
 	server.Post(apiPathRoot, service.addHandler)
-	server.Get(apiPathRoot+"/:id", adminAuthorizer, service.getHandler)
+	server.Get(apiPathRoot+"/:id<int>", adminAuthorizer, service.getHandler)
 	server.Get(apiPathRoot, adminAuthorizer, service.getAllHandler)
-	server.Put(apiPathRoot+"/:id", adminAuthorizer, service.updateHandler)
-	server.Delete(apiPathRoot+"/:id", adminAuthorizer, service.deleteHandler)
+	server.Put(apiPathRoot+"/:id<int>", adminAuthorizer, service.updateHandler)
+	server.Delete(apiPathRoot+"/:id<int>", adminAuthorizer, service.deleteHandler)
 
 	server.Post(apiPathRoot+"/login", service.loginHandler)
 }
