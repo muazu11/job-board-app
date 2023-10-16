@@ -109,6 +109,7 @@ func Init(server *fiber.App, db db.DB, adminAuthorizer fiber.Handler) {
 	server.Get(apiPathRoot, adminAuthorizer, service.getAllHandler)
 	server.Put(apiPathRoot+"/:id", adminAuthorizer, service.updateHandler)
 	server.Delete(apiPathRoot+"/:id", adminAuthorizer, service.deleteHandler)
+
 	server.Post(apiPathRoot+"/login", service.loginHandler)
 }
 
