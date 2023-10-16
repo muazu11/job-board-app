@@ -92,6 +92,35 @@ func accountFromContext(c *fiber.Ctx) (Account, error) {
 	return account, nil
 }
 
+type UserAccount struct {
+	User
+	Account
+}
+
+func (a UserAccount) toArgs() pgx.NamedArgs {
+	return pgx.NamedArgs{
+		"id":            a.ID,
+		"email":         a.Email,
+		"name":          a.Name,
+		"surname":       a.Surname,
+		"phone":         a.Phone,
+		"date_of_birth": a.DateOfBirth,
+		"password_hash": a.PasswordHash,
+		"role":          a.Role,
+	}
+}
+
+func userAccountFromContext(c *fiber.Ctx) (userAccount UserAccount, err error) {
+	userAccount.User.ID = c.QueryInt("id")
+	userAccount.Account.UserID = userAccount.User.ID
+	userAccount.User, err = userFromContext(c)
+	if err != nil {
+		return userAccount, err
+	}
+	userAccount.Account, err = accountFromContext(c)
+	return userAccount, err
+}
+
 type Role string
 
 const (
@@ -123,7 +152,9 @@ func Init(server *fiber.App, db db.DB, adminAuthorizer fiber.Handler) {
 	server.Get(apiPathRoot, adminAuthorizer, service.getAllHandler)
 	server.Put(apiPathRoot+"/:id<int>", adminAuthorizer, service.updateHandler)
 	server.Delete(apiPathRoot+"/:id<int>", adminAuthorizer, service.deleteHandler)
-
+	server.Get(apiPathRoot+"GetMe", service.getMeHandler)
+	server.Put(apiPathRoot+"UpdateMe", service.updateMeHandler)
+	server.Delete(apiPathRoot+"DeleteMe", service.deleteMeHandler)
 	server.Post(apiPathRoot+"/login", service.loginHandler)
 }
 
@@ -144,6 +175,15 @@ func (s service) addHandler(c *fiber.Ctx) error {
 	}
 	account.UserID = user.ID
 	return s.addAccount(c.Context(), account)
+}
+
+func (s service) getMeHandler(c *fiber.Ctx) error {
+	var ret User
+	ret, err := s.getMe(c.Context(), c)
+	if err != nil {
+		return err
+	}
+	return c.JSON(ret)
 }
 
 func (s service) getHandler(c *fiber.Ctx) error {
@@ -178,6 +218,22 @@ func (s service) updateHandler(c *fiber.Ctx) error {
 	}
 	user.ID = id
 	return s.update(c.Context(), user)
+}
+
+func (s service) updateMeHandler(c *fiber.Ctx) error {
+	userAccount, err := userAccountFromContext(c)
+	if err != nil {
+		return err
+	}
+	return s.updateMe(c.Context(), userAccount)
+}
+
+func (s service) deleteMeHandler(c *fiber.Ctx) error {
+	token, err := auth.TokenFromContext(c)
+	if err != nil {
+		return err
+	}
+	return s.deleteMe(c.Context(), c, token)
 }
 
 func (s service) deleteHandler(c *fiber.Ctx) error {
@@ -269,6 +325,44 @@ func (s service) getAccountByEmail(ctx context.Context, email string) (Account, 
 	return ret, err
 }
 
+func (s service) getUserWithToken(ctx context.Context, c *fiber.Ctx, user User) error {
+	var ret Account
+	token, err := auth.TokenFromContext(c)
+	if err != nil {
+		return err
+	}
+	return s.db.QueryOne(ctx, &ret, "SELECT users.* FROM users JOIN accounts on users.id = accounts.user_id WHERE auth_token = $1", nil, token)
+}
+
+func (s service) getMe(ctx context.Context, c *fiber.Ctx) (User, error) {
+	var ret User
+	err := s.getUserWithToken(ctx, c, ret)
+	return ret, err
+}
+
+func (s service) updateMe(ctx context.Context, userAccount UserAccount) error {
+	err := s.update(ctx, userAccount.User)
+	if err != nil {
+		return err
+	}
+	return s.db.Exec(
+		ctx, `
+		UPDATE accounts
+		SET password = @password_hash
+		WHERE auth_token = @auth_token`,
+		nil, userAccount.Account.toArgs(),
+	)
+}
+
+func (s service) deleteMe(ctx context.Context, c *fiber.Ctx, token string) error {
+	var user User
+	err := s.getUserWithToken(ctx, c, user)
+	err = s.db.Exec(ctx, "DELETE FROM users WHERE id = $1", nil, user.ID)
+	if err != nil {
+		return err
+	}
+	return s.db.Exec(ctx, "DELETE FROM accounts WHERE auth_token = $1", nil, token)
+}
 func (s authStore) GetRole(ctx context.Context, token string) (string, error) {
 	var ret string
 	err := s.db.QueryRow(ctx, &ret, "SELECT role FROM accounts WHERE auth_token = $1", token)
