@@ -5,7 +5,11 @@ meta {
 }
 
 delete {
-  url: http://localhost:3000/users/1
+  url: http://localhost:3000/users/2
   body: none
   auth: none
+}
+
+headers {
+  Authorization: Basic <admin-token>
 }

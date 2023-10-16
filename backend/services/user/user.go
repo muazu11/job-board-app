@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"jobboard/backend/auth"
 	"jobboard/backend/db"
 	"time"
 
@@ -52,6 +53,7 @@ func userFromContext(c *fiber.Ctx) (User, error) {
 type Account struct {
 	UserID       int
 	PasswordHash string
+	AuthToken    string
 	Role         Role
 }
 
@@ -83,17 +85,31 @@ const (
 	RoleAdmin Role = "admin"
 )
 
+func (r Role) String() string {
+	return string(r)
+}
+
+type authStore struct {
+	db db.DB
+}
+
+func NewAuthStore(db db.DB) auth.Store {
+	return authStore{db: db}
+}
+
 type service struct {
 	db db.DB
 }
 
-func Init(server *fiber.App, db db.DB) {
+func Init(server *fiber.App, db db.DB, adminAuthorizer fiber.Handler) {
 	service := service{db: db}
+
 	server.Post(apiPathRoot, service.addHandler)
-	server.Get(apiPathRoot+"/:id", service.getHandler)
-	server.Get(apiPathRoot, service.getAllHandler)
-	server.Put(apiPathRoot+"/:id", service.updateHandler)
-	server.Delete(apiPathRoot+"/:id", service.deleteHandler)
+	server.Get(apiPathRoot+"/:id", adminAuthorizer, service.getHandler)
+	server.Get(apiPathRoot, adminAuthorizer, service.getAllHandler)
+	server.Put(apiPathRoot+"/:id", adminAuthorizer, service.updateHandler)
+	server.Delete(apiPathRoot+"/:id", adminAuthorizer, service.deleteHandler)
+	server.Post(apiPathRoot+"/login", service.loginHandler)
 }
 
 // :TODO think about transaction
@@ -156,6 +172,25 @@ func (s service) deleteHandler(c *fiber.Ctx) error {
 	return s.delete(c.Context(), id)
 }
 
+func (s service) loginHandler(c *fiber.Ctx) error {
+	email := c.Query("email")
+	password := c.Query("password")
+	account, err := s.getAccountByEmail(c.Context(), email)
+	if err != nil {
+		return err
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(account.PasswordHash), []byte(password))
+	if err != nil {
+		return err
+	}
+
+	token := struct{ Token string }{
+		Token: account.AuthToken,
+	}
+	return c.JSON(token)
+}
+
 func (s service) add(ctx context.Context, user *User) error {
 	return s.db.QueryOne(
 		ctx, &user.ID, `
@@ -196,7 +231,25 @@ func (s service) delete(ctx context.Context, id int) error {
 func (s service) addAccount(ctx context.Context, account Account) error {
 	return s.db.Exec(
 		ctx,
-		"INSERT INTO account VALUES (@user_id, @password_hash, @role)",
+		"INSERT INTO accounts VALUES (@user_id, @password_hash, DEFAULT, @role)",
 		nil, account.toArgs(),
 	)
+}
+
+func (s service) getAccountByEmail(ctx context.Context, email string) (Account, error) {
+	var ret Account
+	err := s.db.QueryOne(
+		ctx, &ret, `
+		SELECT accounts.* FROM accounts
+		JOIN users ON accounts.user_id = users.id
+		WHERE users.email = $1`,
+		nil, email,
+	)
+	return ret, err
+}
+
+func (s authStore) GetRole(ctx context.Context, token string) (string, error) {
+	var ret string
+	err := s.db.QueryOne(ctx, &ret, "SELECT role FROM accounts WHERE auth_token = $1", nil, token)
+	return ret, err
 }

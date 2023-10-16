@@ -1,0 +1,4 @@
+INSERT INTO users
+VALUES (DEFAULT, '__ADMIN_EMAIL__', 'Admin', 'User', '+33600000000', '1900-01-01');
+INSERT INTO accounts
+VALUES (1, '__ADMIN_PASSWORD_HASH__', DEFAULT, 'admin');

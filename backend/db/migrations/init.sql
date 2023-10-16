@@ -19,9 +19,10 @@ CREATE TABLE users (
     date_of_birth date CHECK (date_of_birth < now())
 );
 
-CREATE TABLE account (
+CREATE TABLE accounts (
     user_id int PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     password_hash text,
+    auth_token uuid DEFAULT gen_random_uuid(),
     role role
 );   
 

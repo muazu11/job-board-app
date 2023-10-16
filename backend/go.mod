@@ -33,5 +33,6 @@ require (
 	github.com/valyala/fasthttp v1.49.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	github.com/z0ne-dev/mgx v1.0.0
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/sys v0.13.0 // indirect
 )

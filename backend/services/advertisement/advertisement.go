@@ -61,14 +61,16 @@ type service struct {
 	db db.DB
 }
 
-func Init(server *fiber.App, db db.DB) {
+func Init(server *fiber.App, db db.DB, adminAuthorizer fiber.Handler) {
 	service := service{db: db}
+	
 	server.Post(apiPathRoot, service.addHandler)
 	server.Get(apiPathRoot+"/:id", service.getHandler)
-	server.Get(apiPathRoot+"WithCompany", service.showHandler)
 	server.Get(apiPathRoot, service.getAllHandler)
 	server.Put(apiPathRoot+"/:id", service.updateHandler)
 	server.Delete(apiPathRoot+"/:id", service.deleteHandler)
+
+	server.Get(apiPathRoot+"WithCompany", service.showHandler)
 }
 
 func (s service) addHandler(c *fiber.Ctx) error {
