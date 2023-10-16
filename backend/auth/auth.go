@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -12,6 +13,18 @@ const (
 	authorizationHeaderKey = "Authorization"
 	authorizationScheme    = "basic"
 )
+
+func TokenFromContext(c *fiber.Ctx) (string, error) {
+	headerValue := c.Get(authorizationHeaderKey)
+	headerParams := strings.Split(headerValue, " ")
+	if len(headerParams) != 2 ||
+		strings.ToLower(headerParams[0]) != authorizationScheme ||
+		headerParams[0] == "" {
+
+		return "", errors.New("invalid or missing authorization header")
+	}
+	return headerParams[1], nil
+}
 
 type Store interface {
 	GetRole(ctx context.Context, token string) (string, error)
@@ -29,15 +42,11 @@ func New(store Store) Auth {
 
 func (a *Auth) NewMiddleware(allowedRoles ...string) fiber.Handler {
 	return func(c *fiber.Ctx) (err error) {
-		headerValue := c.Get(authorizationHeaderKey)
-		headerParams := strings.Split(headerValue, " ")
-		if len(headerParams) != 2 ||
-			strings.ToLower(headerParams[0]) != authorizationScheme ||
-			headerParams[0] == "" {
-
+		token, err := TokenFromContext(c)
+		if err != nil {
 			return unauthorized(c)
 		}
-		role, err := a.store.GetRole(c.Context(), headerParams[1])
+		role, err := a.store.GetRole(c.Context(), token)
 		if err != nil {
 			return unauthorized(c)
 		}
