@@ -2,11 +2,11 @@ package advertisement
 
 import (
 	"context"
-	"jobboard/backend/db"
-	"time"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5"
+	"jobboard/backend/db"
+	"jobboard/backend/services/company"
+	"time"
 )
 
 const (
@@ -23,6 +23,11 @@ type Advertisement struct {
 	ZipCode     string
 	City        string
 	WorkTime    time.Duration `json:"WorkTimeNs"`
+}
+
+type CompanyAdvertisement struct {
+	Advertisement
+	company.Company `json:"Company"`
 }
 
 func (a Advertisement) toArgs() pgx.NamedArgs {
@@ -60,6 +65,7 @@ func Init(server *fiber.App, db db.DB) {
 	service := service{db: db}
 	server.Post(apiPathRoot, service.addHandler)
 	server.Get(apiPathRoot+"/:id", service.getHandler)
+	server.Get(apiPathRoot+"WithCompany", service.showHandler)
 	server.Get(apiPathRoot, service.getAllHandler)
 	server.Put(apiPathRoot+"/:id", service.updateHandler)
 	server.Delete(apiPathRoot+"/:id", service.deleteHandler)
@@ -80,6 +86,14 @@ func (s service) getHandler(c *fiber.Ctx) error {
 		return err
 	}
 	return c.JSON(advertisement)
+}
+
+func (s service) showHandler(c *fiber.Ctx) error {
+	advertisements, err := s.show(c.Context())
+	if err != nil {
+		return err
+	}
+	return c.JSON(advertisements)
 }
 
 func (s service) getAllHandler(c *fiber.Ctx) error {
@@ -123,6 +137,12 @@ func (s service) add(ctx context.Context, advertisement *Advertisement) error {
 func (s service) get(ctx context.Context, id int) (Advertisement, error) {
 	var ret Advertisement
 	err := s.db.QueryOne(ctx, &ret, "SELECT * FROM advertisements WHERE id = $1", nil, id)
+	return ret, err
+}
+
+func (s service) show(ctx context.Context) ([]CompanyAdvertisement, error) {
+	var ret []CompanyAdvertisement
+	err := s.db.Query(ctx, &ret, "SELECT advertisements.*, companies.logo_url, companies.name FROM advertisements JOIN companies on companies.id = advertisements.company_id", nil)
 	return ret, err
 }
 
