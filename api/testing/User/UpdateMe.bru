@@ -1,0 +1,24 @@
+meta {
+  name: UpdateMe
+  type: http
+  seq: 9
+}
+
+put {
+  url: http://localhost:3000/usersUpdateMe?email=juan.guapo@mail.com&name=Juan&surname=Guapo test&phone=0771602045&date_of_birth_utc=2000-05-13&password=super_secret
+  body: none
+  auth: none
+}
+
+query {
+  email: juan.guapo@mail.com
+  name: Juan
+  surname: Guapo test
+  phone: 0771602045
+  date_of_birth_utc: 2000-05-13
+  password: super_secret
+}
+
+headers {
+  Authorization: Basic 842518be-6956-48ed-9fcb-3e59a47f4d6c
+}

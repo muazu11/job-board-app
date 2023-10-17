@@ -107,6 +107,7 @@ func (a UserAccount) toArgs() pgx.NamedArgs {
 		"date_of_birth": a.DateOfBirth,
 		"password_hash": a.PasswordHash,
 		"role":          a.Role,
+		"auth_token":    a.AuthToken,
 	}
 }
 
@@ -221,10 +222,15 @@ func (s service) updateHandler(c *fiber.Ctx) error {
 }
 
 func (s service) updateMeHandler(c *fiber.Ctx) error {
+	token, err := auth.TokenFromContext(c)
+	if err != nil {
+		return err
+	}
 	userAccount, err := userAccountFromContext(c)
 	if err != nil {
 		return err
 	}
+	userAccount.Account.AuthToken = token
 	return s.updateMe(c.Context(), userAccount)
 }
 
@@ -325,30 +331,34 @@ func (s service) getAccountByEmail(ctx context.Context, email string) (Account, 
 	return ret, err
 }
 
-func (s service) getUserWithToken(ctx context.Context, c *fiber.Ctx, user User) error {
-	var ret Account
+func (s service) getUserWithToken(ctx context.Context, c *fiber.Ctx) (User, error) {
+	var user User
 	token, err := auth.TokenFromContext(c)
 	if err != nil {
-		return err
+		return user, err
 	}
-	return s.db.QueryOne(ctx, &ret, "SELECT users.* FROM users JOIN accounts on users.id = accounts.user_id WHERE auth_token = $1", nil, token)
+	err = s.db.QueryOne(ctx, &user, "SELECT users.* FROM users JOIN accounts on users.id = accounts.user_id WHERE auth_token = $1", nil, token)
+	return user, err
 }
 
 func (s service) getMe(ctx context.Context, c *fiber.Ctx) (User, error) {
-	var ret User
-	err := s.getUserWithToken(ctx, c, ret)
-	return ret, err
+	return s.getUserWithToken(ctx, c)
 }
 
 func (s service) updateMe(ctx context.Context, userAccount UserAccount) error {
-	err := s.update(ctx, userAccount.User)
+	err := s.db.Exec(ctx, `UPDATE users
+		SET email = @email, name = @name, surname = @surname, phone = @phone,
+			date_of_birth = @date_of_birth
+		FROM accounts
+		WHERE users.id = accounts.user_id AND accounts.auth_token = @auth_token`, nil, userAccount.toArgs())
+
 	if err != nil {
 		return err
 	}
 	return s.db.Exec(
 		ctx, `
 		UPDATE accounts
-		SET password = @password_hash
+		SET password_hash = @password_hash
 		WHERE auth_token = @auth_token`,
 		nil, userAccount.Account.toArgs(),
 	)
@@ -356,7 +366,7 @@ func (s service) updateMe(ctx context.Context, userAccount UserAccount) error {
 
 func (s service) deleteMe(ctx context.Context, c *fiber.Ctx, token string) error {
 	var user User
-	err := s.getUserWithToken(ctx, c, user)
+	user, err := s.getUserWithToken(ctx, c)
 	err = s.db.Exec(ctx, "DELETE FROM users WHERE id = $1", nil, user.ID)
 	if err != nil {
 		return err
