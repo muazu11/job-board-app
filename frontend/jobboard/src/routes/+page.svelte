@@ -1,10 +1,12 @@
-        <script lang="ts">
+        <script>
             import {Icon, Card,Media,Button,Accordion,Layout,Modal, Portal,Input,Alert,DatePicker   } from 'stwui';
-            import { getAllAds,Advertisement,submitApply,sendCredentials,createUser } from '$lib';
+            import {getAllAds, Advertisement, submitApply, sendCredentials, createUser, getCookie, getMyId} from '$lib';
             import '../app.postcss';
+            import { onMount } from 'svelte';
+            import dayjs from "dayjs";
             let loading = false;
             let userConnected = false;
-            let idAply = -1;
+            let idAvert = -1;
             let idUser = 1;//:TODO get id user
             let message ="";
             let noMessage = false;
@@ -23,7 +25,7 @@
             }
             function setOnlyOneModal(modalName){
                 for (const [key, value] of Object.entries(allModalStates)) {
-                    if(key!=modalName){
+                    if(key!==modalName){
                         allModalStates[key]=false;
                     }else{
                         allModalStates[key]=true;
@@ -37,17 +39,23 @@
                 }
                 loading = false;
             }
-            function tryCreateUser(){
-                let token = createUser(newEmail,newPassword,newName,newSurname,newTel,newBirthDate);
-                if (createUser(newEmail,newPassword,newName,newSurname,newTel,newBirthDate)){
+
+            async function apply(idAvert,message){
+                let token = getCookie("token")
+                await submitApply(message,47,idAvert,token);
+            }
+            async function tryCreateUser() {
+                let OK = await createUser(newEmail, newPassword, newName, newSurname, newTel, dayjs(newBirthDate).format("YYYY-MM-DD"));
+                if (OK) {
                     toggleUser();
-                    sendCredentials(newEmail,newPassword)
-                    document.cookie = "token="+token;
+                    let account = await sendCredentials(newEmail, newPassword)
+                    idUser = account.UserID
+                    let token = account.AuthToken
+                    document.cookie = "token=" + token;
                     desacAllModals();
-                    badTry=false;
-                }
-                else{
-                    creationFailed=true;
+                    badTry = false;
+                } else {
+                    creationFailed = true;
                 }
             }
             let badTry = false;
@@ -59,23 +67,25 @@
             }
             let login = "";
             let password = "";
-            function tryLogin(){
-                let token = sendCredentials(login,password)
-                if (token===undefined){
-                    badTry=true;
-                }
-                else{
+            async function tryLogin(){
+                let account = await sendCredentials(login,password)
+                if (account){
                     toggleUser();
+                    idUser = account.UserID
+                    let token = account.AuthToken
                     document.cookie = "token="+token;
                     desacAllModals();
                     badTry=false;
+                }
+                else{
+                    badTry=true;
                 }
             }
 
             function openModalApply(id) {
                 toggleLoading();
                 setOnlyOneModal("modalApply");
-                idAply = id;
+                idAvert = id;
             }
             function openModalSignIn() {
                 setOnlyOneModal("modalSignIn");
@@ -87,21 +97,15 @@
 
             let open = '';
 
-            function handleClick(item: string) {
+            function handleClick(item) {
                 if (open === item) {
                     open= '';
                 } else {
                     open = item;
                 }
             }
-            // var Ads = getAllAds();
-            var ads = [new Advertisement("id","test title", "test description","https://picsum.photos/200/300" ,"test company_id","test wage","test address","test zip_code" ,"test city" ,"test work_time")]
-            ads.push(new Advertisement("id3","test title", "test description" ,"https://picsum.photos/200/300","test company_id","test wage","test address","test zip_code" ,"test city" ,"test work_time"))
-            ads.push(new Advertisement("id4","test title", "test description","https://picsum.photos/400/300" ,"test company_id","test wage","test address","test zip_code" ,"test city" ,"test work_time"))
-            ads.push(new Advertisement("id5","test title", "test description" ,"https://picsum.photos/200/300","test company_id","test wage","test address","test zip_code" ,"test city" ,"test work_time"))
-            ads.push(new Advertisement("id6","test title", "test description","https://picsum.photos/200/700" ,"test company_id","test wage","test address","test zip_code" ,"test city" ,"test work_time"))
-        </script>
-        
+            </script>
+
         <div style="display: contents">
             <Layout class="h-full">
                 <Layout.Header class="static z-0">
@@ -123,13 +127,16 @@
                 </Layout.Header>
                 <Layout.Content>
                 <Layout.Content.Body class="grid grid-cols-4 gap-5">
-                    {#each ads as advertisement,i}  
+                    {#await getAllAds()}
+                        <p>loading...</p>
+                    {:then ads}
+                    {#each ads as advertisement,i}
                     <div class="col-span-1"></div>
                         <div class="col-span-2">
                             <Card class="h-fit">
                                 <Card.Cover class="h-32" slot="cover">
                                     <img
-                                        src={advertisement.companyLogo}
+                                        src={advertisement.companyLogoURL}
                                         alt="cover"
                                         class="object-cover object-center w-full aspect-1"
                                     />
@@ -140,7 +147,7 @@
                                             <Media.Content.Title>{advertisement.title}
                                             </Media.Content.Title>
                                             <Media.Content.Description>
-                                                {advertisement.description.slice(0,20)}...
+                                                {advertisement.description.slice(0,40)}...
                                                 <Accordion>
                                                     <Accordion.Item open={open === advertisement.id}>
                                                         <Accordion.Item.Title slot="title" on:click={() => handleClick(advertisement.id)} >
@@ -149,19 +156,19 @@
                                                         <Accordion.Item.Content slot="content">
                                                             <ul>
                                                                 <li>
-                                                                    {advertisement.id}
+                                                                    {advertisement.companyName}
                                                                 </li>
                                                                 <li>
-                                                                    {advertisement.wage}
+                                                                    {advertisement.description}
                                                                 </li>
                                                                 <li>
-                                                                    {advertisement.address} | {advertisement.city} | {advertisement.zip_code}
+                                                                    {advertisement.wage + '€/month'}
                                                                 </li>
                                                                 <li>
-                                                                    {advertisement.workTime}
+                                                                    {advertisement.address} | {advertisement.city} | {advertisement.zipCode}
                                                                 </li>
                                                                 <li>
-                                                                    {advertisement.company_id}
+                                                                    {advertisement.workTime + 'H/day'}
                                                                 </li>
                                                             </ul>
                                                             <Button type="primary" {loading} on:click={()=>openModalApply(advertisement.id)}>Apply </Button>
@@ -169,14 +176,15 @@
                                                     </Accordion.Item>
                                                 </Accordion>
                                             </Media.Content.Description>
-                                            
+
                                         </Media.Content>
                                     </Media>
                                 </Card.Content>
                             </Card>
                     </div>
-                    <div class="col-span-1"></div> 
+                    <div class="col-span-1"></div>
                     {/each}
+                    {/await}
                     </Layout.Content.Body>
                 </Layout.Content>
             </Layout>
@@ -186,6 +194,7 @@
                                 {#if !userConnected}
                                 {setOnlyOneModal("modalLogIn")}
                                 {/if}
+                                {setOnlyOneModal("modalApply")}
                                 <Modal.Content slot="content">
                                     <Modal.Content.Header slot="header">Application form</Modal.Content.Header>
                                     {#if noMessage}
@@ -198,13 +207,14 @@
                                             <Input.Label slot="label">Enter your message for this application</Input.Label>
                                         </Input>
                                         <Button type="primary" on:click={()=>{
-                                            if(message == ""){
-                                                noMessage = true;
-                                            }else{
-                                                submitApply(idAply,idUser,message);
-                                                closeModalApply(); }
+                                                if(message == ""){
+                                                    noMessage = true;
+                                                }else{
+                                                    apply(idAvert,message);
+                                                    closeModalApply();
+                                                }
                                             }
-                                            }>Apply</Button>
+                                        }>Apply</Button>
                                             <Button type="ghost" on:click={closeModalApply}>Cancel</Button>
                                     </Modal.Content.Body>
                                 </Modal.Content>
@@ -212,7 +222,7 @@
                         </Portal>
             {/if}
             {#if allModalStates["modalLogIn"]}
-                        
+
                         <Portal>
                             <Modal handleClose={desacAllModals}>
                                 <Modal.Content slot="content">
@@ -229,12 +239,12 @@
                                             <Input bind:value={password} type="password" name="password">
                                                 <Input.Label slot="label">password</Input.Label>
                                             </Input>
-                                            <Button type="primary" on:click={tryLogin}>Go 
+                                            <Button type="primary" on:click={tryLogin}>Go
                                             </Button>
                                             <Button type="primary" on:click={openModalSignIn}>Don't have account ? create one
                                             </Button>
                                             <Button type="ghost" on:click={desacAllModals}>Cancel</Button>
-                                        
+
                                     </Modal.Content.Body>
                                 </Modal.Content>
                             </Modal>
@@ -251,6 +261,7 @@
                             </Alert>
                         {/if}
                         <Modal.Content.Body slot="body">
+                            <form>
                                 <Input bind:value={newEmail} name="login">
                                     <Input.Label slot="label">email</Input.Label>
                                 </Input>
@@ -269,9 +280,10 @@
                                 <DatePicker bind:value={newBirthDate} name="date">
                                     <DatePicker.Label slot="label">Birthdate</DatePicker.Label>
                                 </DatePicker>
-                                <Button type="primary" on:click={tryCreateUser}>Go 
+                                <Button type="primary" on:click={tryCreateUser}>Go
                                 </Button>
                                 <Button type="ghost" on:click={desacAllModals}>Cancel</Button>
+                            </form>
                         </Modal.Content.Body>
                     </Modal.Content>
                 </Modal>
