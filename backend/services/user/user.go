@@ -96,15 +96,6 @@ func (u *UserAccountPage) Slice(start, end int) {
 	*u = (*u)[start:end]
 }
 
-func userAccountFromContext(c *fiber.Ctx) (user User, account Account, err error) {
-	user, err = userFromContext(c)
-	if err != nil {
-		return user, account, err
-	}
-	account, err = accountFromContext(c)
-	return user, account, err
-}
-
 type Role string
 
 const (
@@ -151,10 +142,15 @@ func Init(server *fiber.App, db db.DB, adminAuthorizer fiber.Handler) {
 
 // :TODO think about transaction
 func (s service) addHandler(c *fiber.Ctx) error {
-	user, account, err := userAccountFromContext(c)
+	user, err := userFromContext(c)
 	if err != nil {
 		return err
 	}
+	account, err := accountFromContext(c)
+	if err != nil {
+		return err
+	}
+
 	err = s.add(c.Context(), &user)
 	if err != nil {
 		return err
