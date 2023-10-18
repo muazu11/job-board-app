@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/exp/slices"
 )
 
@@ -13,6 +14,15 @@ const (
 	authorizationHeaderKey = "Authorization"
 	authorizationScheme    = "basic"
 )
+
+func HashPassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	return string(hash), err
+}
+
+func ValidatePassword(password, hash string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+}
 
 func TokenFromContext(c *fiber.Ctx) (string, error) {
 	headerValue := c.Get(authorizationHeaderKey)

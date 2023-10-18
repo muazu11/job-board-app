@@ -1,15 +1,15 @@
 meta {
   name: DeleteMe
   type: http
-  seq: 8
+  seq: 10
 }
 
 delete {
-  url: http://localhost:3000/usersDeleteMe
+  url: http://localhost:3000/users/me
   body: none
   auth: none
 }
 
 headers {
-  Authorization: basic 842518be-6956-48ed-9fcb-3e59a47f4d6c
+  Authorization: Basic <token>
 }
