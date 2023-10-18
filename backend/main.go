@@ -20,9 +20,9 @@ func main() {
 
 	adminAuthorizer := auth.NewMiddleware(user.RoleAdmin.String())
 
-	user.Init(server, db, adminAuthorizer)
+	userService := user.Init(server, db, adminAuthorizer)
 	advertisement.Init(server, db, adminAuthorizer)
-	application.Init(server, db, adminAuthorizer)
+	application.Init(server, db, userService, adminAuthorizer)
 	company.Init(server, db, adminAuthorizer)
 
 	server.Listen(fmt.Sprintf(":%d", config.Server.Port))

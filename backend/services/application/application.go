@@ -2,7 +2,9 @@ package application
 
 import (
 	"context"
+	"jobboard/backend/auth"
 	"jobboard/backend/db"
+	"jobboard/backend/services/user"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -54,16 +56,42 @@ func (a *ApplicationPage) Slice(start, end int) {
 }
 
 type service struct {
-	db db.DB
+	db   db.DB
+	user user.Service
 }
 
-func Init(server *fiber.App, db db.DB, adminAuthorizer fiber.Handler) {
-	service := service{db: db}
+func Init(server *fiber.App, db db.DB, user user.Service, adminAuthorizer fiber.Handler) {
+	service := service{db: db, user: user}
 	server.Post(apiPathRoot, adminAuthorizer, service.addHandler)
 	server.Get(apiPathRoot+"/:id<int>", adminAuthorizer, service.getHandler)
 	server.Get(apiPathRoot, adminAuthorizer, service.getAllHandler)
 	server.Put(apiPathRoot+"/:id<int>", adminAuthorizer, service.updateHandler)
 	server.Delete(apiPathRoot+"/:id<int>", adminAuthorizer, service.deleteHandler)
+	server.Post(apiPathRoot+"/me", service.applyHandler)
+}
+func (s service) applyHandler(c *fiber.Ctx) error {
+	token, err := auth.TokenFromContext(c)
+	if err != nil {
+		return err
+	}
+	user, err := s.user.GetByToken(c.Context(), token)
+	if err != nil {
+		return err
+	}
+	application := applicationFromContext(c)
+	application.ApplicantID = user.ID
+
+	return s.add(c.Context(), application)
+}
+
+func (s service) apply(ctx context.Context, application Application) error {
+	return s.db.QueryRow(
+		ctx, &application.ID, `
+		INSERT INTO applications
+		VALUES (DEFAULT, @advertisement_id, @applicant_id, @message, DEFAULT)
+		RETURNING id`,
+		application.toArgs(),
+	)
 }
 
 func (s service) addHandler(c *fiber.Ctx) error {
