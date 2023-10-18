@@ -185,11 +185,13 @@ func (s service) loginHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	/*
+		token := struct{ Token string }{
+			Token: account.AuthToken,
+		}
 
-	token := struct{ Token string }{
-		Token: account.AuthToken,
-	}
-	return c.JSON(token)
+	*/
+	return c.JSON(account)
 }
 
 func (s service) add(ctx context.Context, user *User) error {
