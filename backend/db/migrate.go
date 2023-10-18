@@ -11,19 +11,19 @@ import (
 )
 
 var (
-	//go:embed migrations/init.sql
-	initMg string
+	//go:embed migrations/schema.sql
+	schemaMg string
 	//go:embed migrations/admin_user.sql
 	adminUserMg string
 )
 
-func (d DB) migrate(config services.Config) error {
-	err := preprocessMigrations(config)
+func (d DB) migrate(servicesConfig services.Config) error {
+	err := preprocessMigrations(servicesConfig)
 	if err != nil {
 		return err
 	}
 	migrator, err := mgx.New(mgx.Migrations(
-		mgx.NewRawMigration("init", initMg),
+		mgx.NewRawMigration("schema", schemaMg),
 		mgx.NewRawMigration("adminUser", adminUserMg),
 	))
 	if err != nil {
@@ -41,13 +41,13 @@ func (d DB) migrate(config services.Config) error {
 	return nil
 }
 
-func preprocessMigrations(config services.Config) error {
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(config.AdminPassword), 10)
+func preprocessMigrations(servicesConfig services.Config) error {
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(servicesConfig.AdminPassword), 10)
 	if err != nil {
 		return err
 	}
 	replacer := strings.NewReplacer(
-		"__ADMIN_EMAIL__", config.AdminEmail,
+		"__ADMIN_EMAIL__", servicesConfig.AdminEmail,
 		"__ADMIN_PASSWORD_HASH__", string(passwordHash),
 	)
 	adminUserMg = replacer.Replace(adminUserMg)

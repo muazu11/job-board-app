@@ -5,9 +5,14 @@ meta {
 }
 
 get {
-  url: http://localhost:3000/companies
+  url: http://localhost:3000/companies?page_cursor=0&page_previous=false
   body: none
   auth: none
+}
+
+query {
+  page_cursor: 0
+  page_previous: false
 }
 
 headers {
