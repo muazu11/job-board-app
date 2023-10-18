@@ -185,10 +185,10 @@ type Pageable interface {
 }
 
 func (d DB) processPage(dest Pageable, page Page) Cursors {
-	cursors := Cursors{}
 	destLen := dest.Len()
 	canContinue := destLen == d.pageLimit+1
 
+	var cursors Cursors
 	if page.previous {
 		if destLen != 0 {
 			cursors.Next = dest.GetCursor(destLen - 1)
@@ -206,5 +206,6 @@ func (d DB) processPage(dest Pageable, page Page) Cursors {
 			dest.Slice(0, destLen-1)
 		}
 	}
+
 	return cursors
 }
