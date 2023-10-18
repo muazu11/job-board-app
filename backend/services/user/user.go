@@ -119,29 +119,31 @@ func NewAuthStore(db db.DB) auth.Store {
 	return authStore{db: db}
 }
 
-type service struct {
+type Service struct {
 	db db.DB
 }
 
-func Init(server *fiber.App, db db.DB, adminAuthorizer fiber.Handler) {
-	service := service{db: db}
+func Init(server *fiber.App, db db.DB, adminAuthorizer fiber.Handler) Service {
+	Service := Service{db: db}
 
-	server.Post(apiPathRoot, service.addHandler)
-	server.Get(apiPathRoot+"/:id<int>", adminAuthorizer, service.getHandler)
-	server.Get(apiPathRoot, adminAuthorizer, service.getAllHandler)
-	server.Put(apiPathRoot+"/:id<int>", adminAuthorizer, service.updateHandler)
-	server.Put(apiPathRoot+"/password/:id<int>", adminAuthorizer, service.updatePasswordHandler)
-	server.Delete(apiPathRoot+"/:id<int>", adminAuthorizer, service.deleteHandler)
+	server.Post(apiPathRoot, Service.addHandler)
+	server.Get(apiPathRoot+"/:id<int>", adminAuthorizer, Service.getHandler)
+	server.Get(apiPathRoot, adminAuthorizer, Service.getAllHandler)
+	server.Put(apiPathRoot+"/:id<int>", adminAuthorizer, Service.updateHandler)
+	server.Put(apiPathRoot+"/password/:id<int>", adminAuthorizer, Service.updatePasswordHandler)
+	server.Delete(apiPathRoot+"/:id<int>", adminAuthorizer, Service.deleteHandler)
 
-	server.Get(apiPathRoot+"/me", service.getMeHandler)
-	server.Put(apiPathRoot+"/me", service.updateMeHandler)
-	server.Put(apiPathRoot+"/password/me", service.updateMyPasswordHandler)
-	server.Delete(apiPathRoot+"/me", service.deleteMeHandler)
-	server.Post(apiPathRoot+"/login", service.loginHandler)
+	server.Get(apiPathRoot+"/me", Service.getMeHandler)
+	server.Put(apiPathRoot+"/me", Service.updateMeHandler)
+	server.Put(apiPathRoot+"/password/me", Service.updateMyPasswordHandler)
+	server.Delete(apiPathRoot+"/me", Service.deleteMeHandler)
+	server.Post(apiPathRoot+"/login", Service.loginHandler)
+
+	return Service
 }
 
 // :TODO think about transaction
-func (s service) addHandler(c *fiber.Ctx) error {
+func (s Service) addHandler(c *fiber.Ctx) error {
 	user, err := userFromContext(c)
 	if err != nil {
 		return err
@@ -159,7 +161,7 @@ func (s service) addHandler(c *fiber.Ctx) error {
 	return s.addAccount(c.Context(), account)
 }
 
-func (s service) getHandler(c *fiber.Ctx) error {
+func (s Service) getHandler(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil {
 		return err
@@ -172,7 +174,7 @@ func (s service) getHandler(c *fiber.Ctx) error {
 	return c.JSON(userAccount)
 }
 
-func (s service) getAllHandler(c *fiber.Ctx) error {
+func (s Service) getAllHandler(c *fiber.Ctx) error {
 	page := db.PageFromContext(c, db.IntColumn)
 	userAccounts, cursors, err := s.getAll(c.Context(), page)
 	if err != nil {
@@ -181,7 +183,7 @@ func (s service) getAllHandler(c *fiber.Ctx) error {
 	return c.JSON(db.NewCursorWrap(cursors, userAccounts))
 }
 
-func (s service) updateHandler(c *fiber.Ctx) error {
+func (s Service) updateHandler(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil {
 		return err
@@ -200,7 +202,7 @@ func (s service) updateHandler(c *fiber.Ctx) error {
 	return s.updateRole(c.Context(), id, role)
 }
 
-func (s service) updatePasswordHandler(c *fiber.Ctx) error {
+func (s Service) updatePasswordHandler(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil {
 		return err
@@ -214,7 +216,7 @@ func (s service) updatePasswordHandler(c *fiber.Ctx) error {
 	return c.JSON(Token{Token: token})
 }
 
-func (s service) deleteHandler(c *fiber.Ctx) error {
+func (s Service) deleteHandler(c *fiber.Ctx) error {
 	id, err := c.ParamsInt("id")
 	if err != nil {
 		return err
@@ -222,19 +224,19 @@ func (s service) deleteHandler(c *fiber.Ctx) error {
 	return s.delete(c.Context(), id)
 }
 
-func (s service) getMeHandler(c *fiber.Ctx) error {
+func (s Service) getMeHandler(c *fiber.Ctx) error {
 	token, err := auth.TokenFromContext(c)
 	if err != nil {
 		return err
 	}
-	ret, err := s.getByToken(c.Context(), token)
+	ret, err := s.GetByToken(c.Context(), token)
 	if err != nil {
 		return err
 	}
 	return c.JSON(ret)
 }
 
-func (s service) updateMeHandler(c *fiber.Ctx) error {
+func (s Service) updateMeHandler(c *fiber.Ctx) error {
 	token, err := auth.TokenFromContext(c)
 	if err != nil {
 		return err
@@ -247,7 +249,7 @@ func (s service) updateMeHandler(c *fiber.Ctx) error {
 	return s.updateByToken(c.Context(), token, user)
 }
 
-func (s service) updateMyPasswordHandler(c *fiber.Ctx) error {
+func (s Service) updateMyPasswordHandler(c *fiber.Ctx) error {
 	token, err := auth.TokenFromContext(c)
 	if err != nil {
 		return err
@@ -261,7 +263,7 @@ func (s service) updateMyPasswordHandler(c *fiber.Ctx) error {
 	return c.JSON(Token{Token: token})
 }
 
-func (s service) deleteMeHandler(c *fiber.Ctx) error {
+func (s Service) deleteMeHandler(c *fiber.Ctx) error {
 	token, err := auth.TokenFromContext(c)
 	if err != nil {
 		return err
@@ -269,7 +271,7 @@ func (s service) deleteMeHandler(c *fiber.Ctx) error {
 	return s.deleteByToken(c.Context(), token)
 }
 
-func (s service) loginHandler(c *fiber.Ctx) error {
+func (s Service) loginHandler(c *fiber.Ctx) error {
 	email := c.Query("email")
 	password := c.Query("password")
 	account, err := s.getAccountByEmail(c.Context(), email)
@@ -284,7 +286,7 @@ func (s service) loginHandler(c *fiber.Ctx) error {
 	return c.JSON(Token{Token: account.AuthToken})
 }
 
-func (s service) add(ctx context.Context, user *User) error {
+func (s Service) add(ctx context.Context, user *User) error {
 	return s.db.QueryRow(
 		ctx, &user.ID, `
 		INSERT INTO users
@@ -294,7 +296,7 @@ func (s service) add(ctx context.Context, user *User) error {
 	)
 }
 
-func (s service) addAccount(ctx context.Context, account Account) error {
+func (s Service) addAccount(ctx context.Context, account Account) error {
 	return s.db.Exec(
 		ctx,
 		"INSERT INTO accounts VALUES (@user_id, @password_hash, DEFAULT, @role)",
@@ -302,7 +304,7 @@ func (s service) addAccount(ctx context.Context, account Account) error {
 	)
 }
 
-func (s service) get(ctx context.Context, id int) (UserAccount, error) {
+func (s Service) get(ctx context.Context, id int) (UserAccount, error) {
 	var ret UserAccount
 	err := s.db.QueryRow(
 		ctx, &ret, `
@@ -314,7 +316,7 @@ func (s service) get(ctx context.Context, id int) (UserAccount, error) {
 	return ret, err
 }
 
-func (s service) getAll(ctx context.Context, page db.Page) ([]UserAccount, db.Cursors, error) {
+func (s Service) getAll(ctx context.Context, page db.Page) ([]UserAccount, db.Cursors, error) {
 	var ret UserAccountPage
 	cursors, err := s.db.QueryPage(
 		ctx, &ret,
@@ -324,7 +326,7 @@ func (s service) getAll(ctx context.Context, page db.Page) ([]UserAccount, db.Cu
 	return ret, cursors, err
 }
 
-func (s service) update(ctx context.Context, user User) error {
+func (s Service) update(ctx context.Context, user User) error {
 	return s.db.Exec(
 		ctx, `
 		UPDATE users
@@ -335,7 +337,7 @@ func (s service) update(ctx context.Context, user User) error {
 	)
 }
 
-func (s service) updateRole(ctx context.Context, id int, role Role) error {
+func (s Service) updateRole(ctx context.Context, id int, role Role) error {
 	return s.db.Exec(
 		ctx,
 		"UPDATE accounts SET role = $2 WHERE user_id = $1",
@@ -343,7 +345,7 @@ func (s service) updateRole(ctx context.Context, id int, role Role) error {
 	)
 }
 
-func (s service) updatePassword(ctx context.Context, id int, password string) (token string, err error) {
+func (s Service) updatePassword(ctx context.Context, id int, password string) (token string, err error) {
 	passwordHash, err := auth.HashPassword(password)
 	if err != nil {
 		return "", err
@@ -359,11 +361,11 @@ func (s service) updatePassword(ctx context.Context, id int, password string) (t
 	)
 }
 
-func (s service) delete(ctx context.Context, id int) error {
+func (s Service) delete(ctx context.Context, id int) error {
 	return s.db.Exec(ctx, "DELETE FROM users WHERE id = $1", id)
 }
 
-func (s service) getByToken(ctx context.Context, token string) (User, error) {
+func (s Service) GetByToken(ctx context.Context, token string) (User, error) {
 	var user User
 	err := s.db.QueryRow(
 		ctx, &user, `
@@ -375,7 +377,7 @@ func (s service) getByToken(ctx context.Context, token string) (User, error) {
 	return user, err
 }
 
-func (s service) updateByToken(ctx context.Context, token string, user User) error {
+func (s Service) updateByToken(ctx context.Context, token string, user User) error {
 	args := user.toArgs()
 	args["auth_token"] = token
 
@@ -390,7 +392,7 @@ func (s service) updateByToken(ctx context.Context, token string, user User) err
 	)
 }
 
-func (s service) updatePasswordByToken(ctx context.Context, token, password string) (string, error) {
+func (s Service) updatePasswordByToken(ctx context.Context, token, password string) (string, error) {
 	passwordHash, err := auth.HashPassword(password)
 	if err != nil {
 		return "", err
@@ -406,7 +408,7 @@ func (s service) updatePasswordByToken(ctx context.Context, token, password stri
 	)
 }
 
-func (s service) deleteByToken(ctx context.Context, token string) error {
+func (s Service) deleteByToken(ctx context.Context, token string) error {
 	return s.db.Exec(ctx, `
 		DELETE FROM users
 		USING accounts
@@ -415,7 +417,7 @@ func (s service) deleteByToken(ctx context.Context, token string) error {
 	)
 }
 
-func (s service) getAccountByEmail(ctx context.Context, email string) (Account, error) {
+func (s Service) getAccountByEmail(ctx context.Context, email string) (Account, error) {
 	var ret Account
 	err := s.db.QueryRow(
 		ctx, &ret, `
