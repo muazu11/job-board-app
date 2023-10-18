@@ -3,11 +3,11 @@ package db
 import (
 	"context"
 	_ "embed"
+	"jobboard/backend/auth"
 	"jobboard/backend/services"
 	"strings"
 
 	"github.com/z0ne-dev/mgx"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -42,13 +42,13 @@ func (d DB) migrate(servicesConfig services.Config) error {
 }
 
 func preprocessMigrations(servicesConfig services.Config) error {
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(servicesConfig.AdminPassword), 10)
+	passwordHash, err := auth.HashPassword(servicesConfig.AdminPassword)
 	if err != nil {
 		return err
 	}
 	replacer := strings.NewReplacer(
 		"__ADMIN_EMAIL__", servicesConfig.AdminEmail,
-		"__ADMIN_PASSWORD_HASH__", string(passwordHash),
+		"__ADMIN_PASSWORD_HASH__", passwordHash,
 	)
 	adminUserMg = replacer.Replace(adminUserMg)
 

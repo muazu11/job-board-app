@@ -1,0 +1,15 @@
+meta {
+  name: DeleteMe
+  type: http
+  seq: 10
+}
+
+delete {
+  url: http://localhost:3000/users/me
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Basic <token>
+}
