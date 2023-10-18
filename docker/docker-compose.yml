@@ -30,6 +30,7 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_HOST: ${POSTGRES_HOST}
       DB_PORT: ${POSTGRES_PORT}
+      DB_PAGE_LIMIT: ${PAGE_LIMIT}
     ports:
       - "${API_PORT}:${API_PORT}" 
     restart: unless-stopped

@@ -50,6 +50,20 @@ func userFromContext(c *fiber.Ctx) (User, error) {
 	return user, nil
 }
 
+type UserPage []User
+
+func (u *UserPage) Len() int {
+	return len(*u)
+}
+
+func (u *UserPage) GetCursor(idx int) any {
+	return (*u)[idx].ID
+}
+
+func (u *UserPage) Slice(start, end int) {
+	*u = (*u)[start:end]
+}
+
 type Account struct {
 	UserID       int
 	PasswordHash string
@@ -145,11 +159,12 @@ func (s service) getHandler(c *fiber.Ctx) error {
 }
 
 func (s service) getAllHandler(c *fiber.Ctx) error {
-	users, err := s.getAll(c.Context())
+	page := db.PageFromContext(c, db.IntColumn)
+	users, cursors, err := s.getAll(c.Context(), page)
 	if err != nil {
 		return err
 	}
-	return c.JSON(users)
+	return c.JSON(db.NewCursorWrap(cursors, users))
 }
 
 func (s service) updateHandler(c *fiber.Ctx) error {
@@ -193,25 +208,30 @@ func (s service) loginHandler(c *fiber.Ctx) error {
 }
 
 func (s service) add(ctx context.Context, user *User) error {
-	return s.db.QueryOne(
+	return s.db.QueryRow(
 		ctx, &user.ID, `
 		INSERT INTO users
 		VALUES (DEFAULT, @email, @name, @surname, @phone, @date_of_birth)
 		RETURNING id`,
-		nil, user.toArgs(),
+		user.toArgs(),
 	)
 }
 
 func (s service) get(ctx context.Context, id int) (User, error) {
 	var ret User
-	err := s.db.QueryOne(ctx, &ret, "SELECT * FROM users WHERE id = $1", nil, id)
+	err := s.db.QueryRow(ctx, &ret, "SELECT * FROM users WHERE id = $1", id)
 	return ret, err
 }
 
-func (s service) getAll(ctx context.Context) ([]User, error) {
-	var ret []User
-	err := s.db.Query(ctx, &ret, "SELECT * FROM users", nil)
-	return ret, err
+func (s service) getAll(ctx context.Context, page db.Page) ([]User, db.Cursors, error) {
+	var ret UserPage
+	cursors, err := s.db.QueryPage(
+		ctx, &ret,
+		// "SELECT * FROM users JOIN accounts on users.id = accounts.user_id",
+		"SELECT * FROM users",
+		"id", page,
+	)
+	return ret, cursors, err
 }
 
 func (s service) update(ctx context.Context, user User) error {
@@ -221,36 +241,36 @@ func (s service) update(ctx context.Context, user User) error {
 		SET email = @email, name = @name, surname = @surname, phone = @phone,
 			date_of_birth = @date_of_birth
 		WHERE id = @id`,
-		nil, user.toArgs(),
+		user.toArgs(),
 	)
 }
 
 func (s service) delete(ctx context.Context, id int) error {
-	return s.db.Exec(ctx, "DELETE FROM users WHERE id = $1", nil, id)
+	return s.db.Exec(ctx, "DELETE FROM users WHERE id = $1", id)
 }
 
 func (s service) addAccount(ctx context.Context, account Account) error {
 	return s.db.Exec(
 		ctx,
 		"INSERT INTO accounts VALUES (@user_id, @password_hash, DEFAULT, @role)",
-		nil, account.toArgs(),
+		account.toArgs(),
 	)
 }
 
 func (s service) getAccountByEmail(ctx context.Context, email string) (Account, error) {
 	var ret Account
-	err := s.db.QueryOne(
+	err := s.db.QueryRow(
 		ctx, &ret, `
 		SELECT accounts.* FROM accounts
 		JOIN users ON accounts.user_id = users.id
 		WHERE users.email = $1`,
-		nil, email,
+		email,
 	)
 	return ret, err
 }
 
 func (s authStore) GetRole(ctx context.Context, token string) (string, error) {
 	var ret string
-	err := s.db.QueryOne(ctx, &ret, "SELECT role FROM accounts WHERE auth_token = $1", nil, token)
+	err := s.db.QueryRow(ctx, &ret, "SELECT role FROM accounts WHERE auth_token = $1", token)
 	return ret, err
 }

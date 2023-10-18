@@ -39,6 +39,20 @@ func applicationFromContext(c *fiber.Ctx) Application {
 	}
 }
 
+type ApplicationPage []Application
+
+func (a *ApplicationPage) Len() int {
+	return len(*a)
+}
+
+func (a *ApplicationPage) GetCursor(idx int) any {
+	return (*a)[idx].ID
+}
+
+func (a *ApplicationPage) Slice(start, end int) {
+	*a = (*a)[start:end]
+}
+
 type service struct {
 	db db.DB
 }
@@ -70,11 +84,12 @@ func (s service) getHandler(c *fiber.Ctx) error {
 }
 
 func (s service) getAllHandler(c *fiber.Ctx) error {
-	applications, err := s.getAll(c.Context())
+	page := db.PageFromContext(c, db.IntColumn)
+	applications, cursors, err := s.getAll(c.Context(), page)
 	if err != nil {
 		return err
 	}
-	return c.JSON(applications)
+	return c.JSON(db.NewCursorWrap(cursors, applications))
 }
 
 func (s service) updateHandler(c *fiber.Ctx) error {
@@ -96,25 +111,25 @@ func (s service) deleteHandler(c *fiber.Ctx) error {
 }
 
 func (s service) add(ctx context.Context, application Application) error {
-	return s.db.QueryOne(
+	return s.db.QueryRow(
 		ctx, &application.ID, `
 		INSERT INTO applications
 		VALUES (DEFAULT, @advertisement_id, @applicant_id, @message, DEFAULT)
 		RETURNING id`,
-		nil, application.toArgs(),
+		application.toArgs(),
 	)
 }
 
 func (s service) get(ctx context.Context, id int) (Application, error) {
 	var ret Application
-	err := s.db.QueryOne(ctx, &ret, "SELECT * FROM applications WHERE id = $1", nil, id)
+	err := s.db.QueryRow(ctx, &ret, "SELECT * FROM applications WHERE id = $1", id)
 	return ret, err
 }
 
-func (s service) getAll(ctx context.Context) ([]Application, error) {
-	var ret []Application
-	err := s.db.Query(ctx, &ret, "SELECT * FROM applications", nil)
-	return ret, err
+func (s service) getAll(ctx context.Context, page db.Page) ([]Application, db.Cursors, error) {
+	var ret ApplicationPage
+	cursors, err := s.db.QueryPage(ctx, &ret, "SELECT * FROM applications", "id", page)
+	return ret, cursors, err
 }
 
 func (s service) update(ctx context.Context, application Application) error {
@@ -123,10 +138,10 @@ func (s service) update(ctx context.Context, application Application) error {
 		SET advertisement_id = @advertisement_id, applicant_id = @applicant_id,
 			message = @message
 		WHERE id = @id`,
-		nil, application.toArgs(),
+		application.toArgs(),
 	)
 }
 
 func (s service) delete(ctx context.Context, id int) error {
-	return s.db.Exec(ctx, "DELETE FROM applications WHERE id = $1", nil, id)
+	return s.db.Exec(ctx, "DELETE FROM applications WHERE id = $1", id)
 }

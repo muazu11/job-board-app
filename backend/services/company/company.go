@@ -36,6 +36,20 @@ func companyFromContext(c *fiber.Ctx) Company {
 	}
 }
 
+type CompanyPage []Company
+
+func (c *CompanyPage) Len() int {
+	return len(*c)
+}
+
+func (c *CompanyPage) GetCursor(idx int) any {
+	return (*c)[idx].ID
+}
+
+func (c *CompanyPage) Slice(start, end int) {
+	*c = (*c)[start:end]
+}
+
 type service struct {
 	db db.DB
 }
@@ -67,11 +81,12 @@ func (s service) getHandler(c *fiber.Ctx) error {
 }
 
 func (s service) getAllHandler(c *fiber.Ctx) error {
-	companies, err := s.getAll(c.Context())
+	page := db.PageFromContext(c, db.IntColumn)
+	companies, cursors, err := s.getAll(c.Context(), page)
 	if err != nil {
 		return err
 	}
-	return c.JSON(companies)
+	return c.JSON(db.NewCursorWrap(cursors, companies))
 }
 
 func (s service) updateHandler(c *fiber.Ctx) error {
@@ -93,33 +108,33 @@ func (s service) deleteHandler(c *fiber.Ctx) error {
 }
 
 func (s service) add(ctx context.Context, company *Company) error {
-	return s.db.QueryOne(
+	return s.db.QueryRow(
 		ctx, &company.ID,
 		"INSERT INTO companies VALUES(DEFAULT, @name, @siren, @logo_url) RETURNING id",
-		nil, company.toArgs(),
+		company.toArgs(),
 	)
 }
 
 func (s service) get(ctx context.Context, id int) (Company, error) {
 	var ret Company
-	err := s.db.QueryOne(ctx, &ret, "SELECT * FROM companies WHERE id = $1", nil, id)
+	err := s.db.QueryRow(ctx, &ret, "SELECT * FROM companies WHERE id = $1", id)
 	return ret, err
 }
 
-func (s service) getAll(ctx context.Context) ([]Company, error) {
-	var ret []Company
-	err := s.db.Query(ctx, &ret, "SELECT * FROM companies", nil)
-	return ret, err
+func (s service) getAll(ctx context.Context, page db.Page) ([]Company, db.Cursors, error) {
+	var ret CompanyPage
+	cursors, err := s.db.QueryPage(ctx, &ret, "SELECT * FROM companies", "id", page)
+	return ret, cursors, err
 }
 
 func (s service) update(ctx context.Context, company Company) error {
 	return s.db.Exec(
 		ctx,
 		"UPDATE companies SET name = @name, logo_url = @logo_url WHERE id = @id",
-		nil, company.toArgs(),
+		company.toArgs(),
 	)
 }
 
 func (s service) delete(ctx context.Context, id int) error {
-	return s.db.Exec(ctx, "DELETE FROM companies WHERE id = $1", nil, id)
+	return s.db.Exec(ctx, "DELETE FROM companies WHERE id = $1", id)
 }
