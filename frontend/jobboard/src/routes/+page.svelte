@@ -1,177 +1,329 @@
-        <script>
-            import {Icon, Card,Media,Button,Accordion,Layout,Modal, Portal,Input,Alert,DatePicker   } from 'stwui';
-            import {getAllAds, Advertisement, submitApply, sendCredentials, createUser, getCookie, getMyId} from '$lib';
-            import '../app.postcss';
-            import { onMount } from 'svelte';
-            import dayjs from "dayjs";
-            let loading = false;
-            let userConnected = false;
-            let idAvert = -1;
-            let idUser = 1;//:TODO get id user
-            let message ="";
-            let noMessage = false;
-            let newEmail = "";
-            let newPassword = "";
-            let newName = "";
-            let newSurname = "";
-            let newTel = "";
-            let creationFailed = false;
-            let newBirthDate = new Date();
+<script>
+    import {Icon, Card, Media, Button, Accordion, Layout, Modal, Portal, Input, Alert, DatePicker, Drawer} from 'stwui';
+    import {
+        getAllAds,
+        Advertisement,
+        submitApply,
+        sendCredentials,
+        createUser,
+        getCookie,
+        getMe,
+        updateProfile,
+        updateMyInfo
+    } from '$lib';
+    import {getSvg} from "$lib/Images/svgGetter.js";
+    import dayjs from "dayjs";
+    import {onMount} from "svelte";
 
-            let allModalStates = {
-                modalApply :false,
-                modalLogIn : false,
-                modalSignIn : false,
-            }
-            function setOnlyOneModal(modalName){
-                for (const [key, value] of Object.entries(allModalStates)) {
-                    if(key!==modalName){
-                        allModalStates[key]=false;
-                    }else{
-                        allModalStates[key]=true;
-                    }
-                }
-                console.log(allModalStates);
-            }
-            function desacAllModals(){
-                for(let modal in allModalStates){
-                    allModalStates[modal]=false;
-                }
-                loading = false;
-            }
+    let token = "";
+    let loading = false;
+    let userConnected = false;
+    let idAvert;
+    let message = "";
+    let noMessage = false;
+    let newEmail = "";
+    let newPassword = "";
+    let newName = "";
+    let newSurname = "";
+    let newTel = "";
+    let editError = false;
+    let creationFailed = false;
+    let newBirthDate = new Date();
+    let isEditing = false
+    let userName = "";
+    let userSurname = "";
+    let userBirthDate = "";
+    let userEmail = "";
+    let userTel = "";
+    let userPassword = "";
+    let errorPwdInvalid = false;
 
-            async function apply(idAvert,message){
-                let token = getCookie("token")
-                await submitApply(message,47,idAvert,token);
+    function flushEntry() {
+        token = "";
+        idAvert = "";
+        message = "";
+        noMessage = false;
+        newEmail = "";
+        newPassword = "";
+        newName = "";
+        newSurname = "";
+        newTel = "";
+        editError = false;
+        creationFailed = false;
+        newBirthDate = new Date();
+        isEditing = false
+        userPassword = "";
+    }
+
+    let allModalStates = {
+        modalApply: false,
+        modalLogIn: false,
+        modalSignIn: false,
+        modalEdit: false
+    }
+
+    function setOnlyOneModal(modalName) {
+        for (const [key, value] of Object.entries(allModalStates)) {
+            if (key === modalName) {
+                allModalStates[key] = true;
+            } else {
+                allModalStates[key] = false;
             }
-            async function tryCreateUser() {
-                let OK = await createUser(newEmail, newPassword, newName, newSurname, newTel, dayjs(newBirthDate).format("YYYY-MM-DD"));
-                if (OK) {
-                    toggleUser();
-                    let account = await sendCredentials(newEmail, newPassword)
-                    idUser = account.UserID
-                    let token = account.AuthToken
-                    document.cookie = "token=" + token;
-                    desacAllModals();
-                    badTry = false;
+        }
+        console.log(allModalStates);
+    }
+
+    function desacOnlyOneModal(modalName) {
+        for (const [key, value] of Object.entries(allModalStates)) {
+            if (key === modalName) {
+                allModalStates[key] = false;
+            }
+        }
+        console.log(allModalStates);
+    }
+
+    async function tryEdit() {
+        if (userPassword !== "") {
+            //TODO same password size as in backend
+            if (userPassword.length > 5) {
+                let updateSuccess = await updateProfile(userEmail, userName, userSurname, userTel, dayjs(userBirthDate).format("YYYY-MM-DD"), getCookie("token"), userPassword)
+                if (updateSuccess) {
+                    isEditing = false;
+                    desacOnlyOneModal("modalEdit")
+                    flushEntry()
+                    editError = false
+                    errorPwdInvalid = false
                 } else {
-                    creationFailed = true;
+                    editError = true
+                    console.log(editError)
                 }
+            } else {
+                errorPwdInvalid = true
+                console.log(editError)
             }
-            let badTry = false;
-            function toggleUser() {
-                userConnected = !userConnected;
+        } else {
+            let updateSuccess = await updateMyInfo(userEmail, userName, userSurname, userTel, dayjs(userBirthDate).format("YYYY-MM-DD"), getCookie("token"))
+            if (updateSuccess) {
+                isEditing = false;
+                desacOnlyOneModal("modalEdit")
+                flushEntry()
+            } else {
+                editError = true
+                console.log(editError)
             }
-            function toggleLoading() {
-                loading = !loading;
-            }
-            let login = "";
-            let password = "";
-            async function tryLogin(){
-                let account = await sendCredentials(login,password)
-                if (account){
-                    toggleUser();
-                    idUser = account.UserID
-                    let token = account.AuthToken
-                    document.cookie = "token="+token;
-                    desacAllModals();
-                    badTry=false;
-                }
-                else{
-                    badTry=true;
-                }
-            }
+        }
 
-            function openModalApply(id) {
-                toggleLoading();
-                setOnlyOneModal("modalApply");
-                idAvert = id;
-            }
-            function openModalSignIn() {
-                setOnlyOneModal("modalSignIn");
-            }
-            function closeModalApply() {
-                toggleLoading();
-                desacAllModals();
-            }
 
-            let open = '';
+    }
 
-            function handleClick(item) {
-                if (open === item) {
-                    open= '';
-                } else {
-                    open = item;
-                }
-            }
-            </script>
+    function desacAllModals() {
+        for (let modal in allModalStates) {
+            allModalStates[modal] = false;
+        }
+        loading = false;
+        console.log(allModalStates)
+    }
 
-        <div style="display: contents">
-            <Layout class="h-full">
-                <Layout.Header class="static z-0">
-                    Header
-                    <Layout.Header.Extra slot="extra">
-                        {#if userConnected}
-                        <Button on:click={toggleUser} type="primary">
-                                Logout
-                        </Button>
-                        {:else}
-                        <Button on:click={()=>(setOnlyOneModal("modalLogIn"))} type="primary">
-                            Log in
-                        </Button>
-                        <Button on:click={()=>(setOnlyOneModal("modalSignIn"))} type="primary">
-                            Sign in
-                        </Button>
-                        {/if}
-                    </Layout.Header.Extra>
-                </Layout.Header>
-                <Layout.Content>
-                <Layout.Content.Body class="grid grid-cols-4 gap-5">
-                    {#await getAllAds()}
-                        <p>loading...</p>
-                    {:then ads}
+    async function apply(idAvert, message) {
+        await submitApply(message, idAvert, token);
+    }
+
+    function editProfile() {
+        setOnlyOneModal("modalEdit");
+    }
+
+    function closeModalProfile() {
+        desacOnlyOneModal("modalEdit");
+    }
+
+    async function tryCreateUser() {
+        let OK = await createUser(newEmail, newPassword, newName, newSurname, newTel, dayjs(newBirthDate).format("YYYY-MM-DD"));
+        if (OK) {
+            token = await sendCredentials(newEmail, newPassword)
+            document.cookie = "token=" + token;
+            desacOnlyOneModal("modalSignIn")
+            badTry = false;
+            flushEntry()
+            await fillMyInfo()
+        } else {
+            creationFailed = true;
+        }
+    }
+
+    let badTry = false;
+
+    function logout() {
+        document.cookie = "token= ; expires = Thu, 01 Jan 1970 00:00:00 GMT"
+        userConnected = false;
+    }
+
+    function toggleLoading() {
+        loading = !loading;
+    }
+
+    let login = "";
+    let password = "";
+
+    async function tryLogin() {
+        token = await sendCredentials(login, password)
+        if (token) {
+            document.cookie = "token=" + token;
+            userConnected = true;
+            desacOnlyOneModal("modalLogIn")
+            badTry = false;
+            flushEntry()
+            await fillMyInfo()
+        } else {
+            badTry = true;
+        }
+    }
+
+    function openModalApply(id) {
+        toggleLoading();
+        setOnlyOneModal("modalApply");
+        idAvert = id;
+    }
+
+    function openModalSignIn() {
+        setOnlyOneModal("modalSignIn");
+    }
+
+    function closeModalApply() {
+        toggleLoading();
+        desacAllModals();
+    }
+
+    let open = '';
+
+    function handleClick(item) {
+        if (open === item) {
+            open = '';
+        } else {
+            open = item;
+        }
+    }
+
+    async function fillMyInfo() {
+        userConnected = await getMe(getCookie("token"))
+        userName = userConnected.Name
+        userSurname = userConnected.Surname
+        userBirthDate = userConnected.DateOfBirth
+        userEmail = userConnected.Email
+        userTel = userConnected.Phone
+        console.log(userConnected)
+    }
+
+    let cancelIcon
+    let saveIcon
+    let editIcon
+    let companyIcon
+    let wageIcon
+    let workTimeIcon
+    let addressIcon
+    async function getIcons() {
+        cancelIcon =await getSvg("cancel")
+        saveIcon =await getSvg("save")
+        editIcon =await  getSvg("edit")
+        companyIcon =await  getSvg("company")
+        wageIcon =await  getSvg("wage")
+        workTimeIcon =await  getSvg("workTime")
+        addressIcon =await  getSvg("address")
+    }
+    // Need to use onMount to execute after the DOM is ready
+    onMount(async () => {
+        await fillMyInfo()
+        await getIcons()
+    })
+</script>
+
+<div style="display: contents">
+
+    <Layout class="h-full">
+        <Layout.Header class="static z-0">
+            <h1>JobBoard </h1>
+            <Layout.Header.Extra slot="extra">
+                {#if userConnected}
+                    <Button on:click={editProfile} type="ghost">
+                        Profile
+                    </Button>
+                    <Button on:click={logout} class="m-2" type="primary">
+                        Logout
+                    </Button>
+                {:else}
+                    <Button on:click={()=>(setOnlyOneModal("modalLogIn"))} class="m-2" type="primary">
+                        Log in
+                    </Button>
+                    <Button on:click={()=>(setOnlyOneModal("modalSignIn"))} class="m-2" type="primary">
+                        Sign in
+                    </Button>
+                {/if}
+            </Layout.Header.Extra>
+        </Layout.Header>
+        <Layout.Content>
+            <Layout.Content.Body>
+                {#await getAllAds()}
+                    <p>loading...</p>
+                {:then ads}
                     {#each ads as advertisement,i}
-                    <div class="col-span-1"></div>
-                        <div class="col-span-2">
+                        <div class="md:px-40 py-5 sm:p-5 px-2">
                             <Card class="h-fit">
                                 <Card.Cover class="h-32" slot="cover">
                                     <img
-                                        src={advertisement.companyLogoURL}
-                                        alt="cover"
-                                        class="object-cover object-center w-full aspect-1"
+                                            src={advertisement.companyLogoURL}
+                                            alt="cover"
+                                            class="object-scale-down h-full w-full"
                                     />
                                 </Card.Cover>
                                 <Card.Content slot="content">
                                     <Media>
                                         <Media.Content class="w-full">
-                                            <Media.Content.Title>{advertisement.title}
+                                            <Media.Content.Title>
+                                                <h2 class="break-words">{advertisement.title}</h2>
+                                                <div class="grid sm:grid-cols-1 md:grid-cols-4 ">
+                                                    <div class="col col-span-2">
+                                                        <div class="flex flex-row">
+                                                            <Icon data={companyIcon} class="mt-3 overflow-visible h-7 w-7"/>
+                                                            <p class="ml-3 m-4 ">{advertisement.companyName}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col col-span-1">
+                                                        <div class="flex flex-row">
+                                                            <Icon data={wageIcon} class="mt-3 overflow-visible h-7 w-7"/>
+                                                            <p class="ml-3 m-4">{advertisement.wage}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col col-span-1">
+                                                        <div class="flex flex-row">
+                                                            <Icon data={workTimeIcon} class="mt-3 overflow-visible h-7 w-7"/>
+                                                            <p class="ml-3 m-4 break-normal">{advertisement.workTime}
+                                                                h</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </Media.Content.Title>
                                             <Media.Content.Description>
-                                                {advertisement.description.slice(0,40)}...
                                                 <Accordion>
                                                     <Accordion.Item open={open === advertisement.id}>
-                                                        <Accordion.Item.Title slot="title" on:click={() => handleClick(advertisement.id)} >
-                                                            learn More
+                                                        <Accordion.Item.Title slot="title"
+                                                                              on:click={() => handleClick(advertisement.id)}>
+                                                            Learn more
                                                         </Accordion.Item.Title>
-                                                        <Accordion.Item.Content slot="content">
-                                                            <ul>
-                                                                <li>
-                                                                    {advertisement.companyName}
-                                                                </li>
-                                                                <li>
-                                                                    {advertisement.description}
-                                                                </li>
-                                                                <li>
-                                                                    {advertisement.wage + '€/month'}
-                                                                </li>
-                                                                <li>
-                                                                    {advertisement.address} | {advertisement.city} | {advertisement.zipCode}
-                                                                </li>
-                                                                <li>
-                                                                    {advertisement.workTime + 'H/day'}
-                                                                </li>
-                                                            </ul>
-                                                            <Button type="primary" {loading} on:click={()=>openModalApply(advertisement.id)}>Apply </Button>
+                                                        <Accordion.Item.Content slot="content" class="p-5">
+                                                            {advertisement.description}
+                                                            <div class="grid">
+                                                                <div class="flex flex-row">
+                                                                    <Icon data={addressIcon} class="mt-3"/>
+                                                                    <p class="ml-1 m-3 "> {advertisement.address}, <span
+                                                                            class="break-normal">{advertisement.city}</span>
+                                                                        ({advertisement.zipCode})
+                                                                    </p>
+                                                                </div>
+                                                                <Button type="primary" {loading}
+                                                                        on:click={()=>openModalApply(advertisement.id)}>
+                                                                    Apply
+                                                                </Button>
+                                                            </div>
+
                                                         </Accordion.Item.Content>
                                                     </Accordion.Item>
                                                 </Accordion>
@@ -181,32 +333,30 @@
                                     </Media>
                                 </Card.Content>
                             </Card>
-                    </div>
-                    <div class="col-span-1"></div>
+                        </div>
                     {/each}
-                    {/await}
-                    </Layout.Content.Body>
-                </Layout.Content>
-            </Layout>
-            {#if allModalStates["modalApply"]}
-                        <Portal>
-                            <Modal handleClose={closeModalApply}>
-                                {#if !userConnected}
-                                {setOnlyOneModal("modalLogIn")}
-                                {/if}
-                                {setOnlyOneModal("modalApply")}
-                                <Modal.Content slot="content">
-                                    <Modal.Content.Header slot="header">Application form</Modal.Content.Header>
-                                    {#if noMessage}
-                                        <Alert type="warn">
-                                            <Alert.Title slot="title">Please enter a message</Alert.Title>
-                                        </Alert>
-                                    {/if}
-                                    <Modal.Content.Body slot="body">
-                                        <Input bind:value={message} name="message">
-                                            <Input.Label slot="label">Enter your message for this application</Input.Label>
-                                        </Input>
-                                        <Button type="primary" on:click={()=>{
+                {/await}
+            </Layout.Content.Body>
+        </Layout.Content>
+    </Layout>
+    {#if allModalStates["modalApply"]}
+        <Portal>
+            <Modal handleClose={closeModalApply}>
+                {#if !userConnected}
+                    {allModalStates.modalLogIn = true}
+                {/if}
+                <Modal.Content slot="content">
+                    <Modal.Content.Header slot="header">Application form</Modal.Content.Header>
+                    {#if noMessage}
+                        <Alert type="warn">
+                            <Alert.Title slot="title">Please enter a message</Alert.Title>
+                        </Alert>
+                    {/if}
+                    <Modal.Content.Body slot="body">
+                        <Input bind:value={message} name="message">
+                            <Input.Label slot="label">Enter your message for this application</Input.Label>
+                        </Input>
+                        <Button type="primary" on:click={()=>{
                                                 if(message == ""){
                                                     noMessage = true;
                                                 }else{
@@ -214,79 +364,140 @@
                                                     closeModalApply();
                                                 }
                                             }
-                                        }>Apply</Button>
-                                            <Button type="ghost" on:click={closeModalApply}>Cancel</Button>
-                                    </Modal.Content.Body>
-                                </Modal.Content>
-                            </Modal>
-                        </Portal>
-            {/if}
-            {#if allModalStates["modalLogIn"]}
+                                        }>Apply
+                        </Button>
+                        <Button type="ghost" on:click={closeModalApply}>Cancel</Button>
+                    </Modal.Content.Body>
+                </Modal.Content>
+            </Modal>
+        </Portal>
+    {/if}
+    {#if allModalStates["modalLogIn"]}
 
-                        <Portal>
-                            <Modal handleClose={desacAllModals}>
-                                <Modal.Content slot="content">
-                                    <Modal.Content.Header slot="header">Login to your account</Modal.Content.Header>
-                                    {#if badTry}
-                                        <Alert type="error">
-                                            <Alert.Title slot="title">Bad credentials</Alert.Title>
-                                        </Alert>
-                                    {/if}
-                                    <Modal.Content.Body slot="body">
-                                            <Input bind:value={login} name="login">
-                                                <Input.Label slot="label">email</Input.Label>
-                                            </Input>
-                                            <Input bind:value={password} type="password" name="password">
-                                                <Input.Label slot="label">password</Input.Label>
-                                            </Input>
-                                            <Button type="primary" on:click={tryLogin}>Go
-                                            </Button>
-                                            <Button type="primary" on:click={openModalSignIn}>Don't have account ? create one
-                                            </Button>
-                                            <Button type="ghost" on:click={desacAllModals}>Cancel</Button>
+        <Portal>
+            <Modal handleClose={desacAllModals}>
+                <Modal.Content slot="content">
+                    <Modal.Content.Header slot="header">Login to your account</Modal.Content.Header>
+                    {#if badTry}
+                        <Alert type="error">
+                            <Alert.Title slot="title">Bad credentials</Alert.Title>
+                        </Alert>
+                    {/if}
+                    <Modal.Content.Body slot="body">
+                        <Input bind:value={login} name="login">
+                            <Input.Label slot="label">email</Input.Label>
+                        </Input>
+                        <Input bind:value={password} type="password" name="password">
+                            <Input.Label slot="label">password</Input.Label>
+                        </Input>
+                        <Button type="primary" on:click={tryLogin}>Go
+                        </Button>
+                        <Button class="m-2" type="primary" on:click={openModalSignIn}>Don't have account ? Create one
+                        </Button>
+                        <Button class="m-2" type="ghost" on:click={desacAllModals}>Cancel</Button>
 
-                                    </Modal.Content.Body>
-                                </Modal.Content>
-                            </Modal>
-                        </Portal>
-            {/if}
-            {#if allModalStates["modalSignIn"]}
-            <Portal>
-                <Modal handleClose={desacAllModals}>
-                    <Modal.Content slot="content">
-                        <Modal.Content.Header slot="header">Create a new account</Modal.Content.Header>
-                        {#if creationFailed}
-                            <Alert type="error">
-                                <Alert.Title slot="title">TODO</Alert.Title>
-                            </Alert>
-                        {/if}
-                        <Modal.Content.Body slot="body">
-                            <form>
-                                <Input bind:value={newEmail} name="login">
-                                    <Input.Label slot="label">email</Input.Label>
-                                </Input>
-                                <Input bind:value={newPassword} type="password" name="password">
-                                    <Input.Label slot="label">password</Input.Label>
-                                </Input>
-                                <Input bind:value={newName} type="text" name="name">
-                                    <Input.Label slot="label">Name</Input.Label>
-                                </Input>
-                                <Input bind:value={newSurname} type="text" name="surname">
-                                    <Input.Label slot="label">Surname</Input.Label>
-                                </Input>
-                                <Input bind:value={newTel} type="text" name="tel">
-                                    <Input.Label slot="label">Tel</Input.Label>
-                                </Input>
-                                <DatePicker bind:value={newBirthDate} name="date">
-                                    <DatePicker.Label slot="label">Birthdate</DatePicker.Label>
-                                </DatePicker>
-                                <Button type="primary" on:click={tryCreateUser}>Go
-                                </Button>
-                                <Button type="ghost" on:click={desacAllModals}>Cancel</Button>
-                            </form>
-                        </Modal.Content.Body>
-                    </Modal.Content>
-                </Modal>
-            </Portal>
-            {/if}
-        </div>
+                    </Modal.Content.Body>
+                </Modal.Content>
+            </Modal>
+        </Portal>
+    {/if}
+    {#if allModalStates["modalSignIn"]}
+        <Portal>
+            <Modal handleClose={desacAllModals}>
+                <Modal.Content slot="content">
+                    <Modal.Content.Header slot="header">Create a new account</Modal.Content.Header>
+                    {#if creationFailed}
+                        <Alert type="error">
+                            <Alert.Title slot="title">TODO</Alert.Title>
+                        </Alert>
+                    {/if}
+                    <Modal.Content.Body slot="body">
+                        <form>
+                            <Input bind:value={newEmail} name="login">
+                                <Input.Label slot="label">email</Input.Label>
+                            </Input>
+                            <Input bind:value={newPassword} type="password" name="password">
+                                <Input.Label slot="label">password</Input.Label>
+                            </Input>
+                            <Input bind:value={newName} type="text" name="name">
+                                <Input.Label slot="label">Name</Input.Label>
+                            </Input>
+                            <Input bind:value={newSurname} type="text" name="surname">
+                                <Input.Label slot="label">Surname</Input.Label>
+                            </Input>
+                            <Input bind:value={newTel} type="text" name="tel">
+                                <Input.Label slot="label">Tel</Input.Label>
+                            </Input>
+                            <DatePicker bind:value={newBirthDate} name="date">
+                                <DatePicker.Label slot="label">Birthdate</DatePicker.Label>
+                            </DatePicker>
+                            <Button class="m-2" type="primary" htmlType="submit" on:click={tryCreateUser}>Go
+                            </Button>
+                            <Button class="m-2" type="ghost" on:click={desacAllModals}>Cancel</Button>
+                        </form>
+                    </Modal.Content.Body>
+                </Modal.Content>
+            </Modal>
+        </Portal>
+    {/if}
+
+    {#if allModalStates["modalEdit"]}
+        <Portal>
+            <Modal handleClose={closeModalProfile}>
+
+                <Modal.Content slot="content">
+                    <Modal.Content.Header slot="header">Your profile</Modal.Content.Header>
+                    {#if editError}
+                        <Alert type="error">
+                            <Alert.Title slot="title">Bad credentials</Alert.Title>
+                        </Alert>
+                    {/if}
+                    {#if errorPwdInvalid}
+                        <Alert type="error">
+                            <Alert.Title slot="title">Your password is invalid</Alert.Title>
+                        </Alert>
+                    {/if}
+                    <Modal.Content.Body slot="body">
+                        <Input bind:value={userName} name="name">
+                            <Input.Label slot="label">name</Input.Label>
+                        </Input>
+                        <Input bind:value={userSurname} name="surname">
+                            <Input.Label slot="label">surname</Input.Label>
+                        </Input>
+                        <DatePicker bind:value={userBirthDate} name="date">
+                            <DatePicker.Label slot="label">Birthdate</DatePicker.Label>
+                        </DatePicker>
+                        <Input bind:value={userEmail} name="email">
+                            <Input.Label slot="label">email</Input.Label>
+                        </Input>
+                        <Input bind:value={userTel} name="tel">
+                            <Input.Label slot="label">telephone</Input.Label>
+                        </Input>
+                        <Input type="password" bind:value={userPassword} name="pwd">
+                            <Input.Label slot="label">password</Input.Label>
+                        </Input>
+                        <Button type="primary" disabled={!isEditing} on:click={()=>{
+                                tryEdit();
+                            }}>
+                            <Icon data={saveIcon}/>
+                        </Button>
+                        <Button class="mt-5" type="primary" on:click={()=>{
+                                isEditing= !isEditing
+                            }}>
+                            {#if isEditing}
+                                <Icon data={editIcon}/>
+                                Lock
+                            {:else}
+                                <Icon data={editIcon}/>
+                                Edit
+                            {/if}
+                        </Button>
+                        <Button type="ghost" on:click={closeModalProfile}>
+                            <Icon data={cancelIcon}/>
+                        </Button>
+                    </Modal.Content.Body>
+                </Modal.Content>
+            </Modal>
+        </Portal>
+    {/if}
+</div>

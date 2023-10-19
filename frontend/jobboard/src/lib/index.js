@@ -38,40 +38,43 @@ export async function getAllAds() {
 
 }
 
-export async function submitApply(message, applicant_ID, advertisement_ID,token) {
-    let url = baseRoute + 'applications?' + new URLSearchParams({
+export async function submitApply(message, advertisement_ID, token) {
+    let url = baseRoute + 'applications/me?' + new URLSearchParams({
         message: message,
-        applicant_id: applicant_ID,
         advertisement_id: advertisement_ID,
     })
 
     let promise = await fetch(url, {
         method: 'POST',
         headers: {
-            "Authorization": "Basic "+token
+            "Authorization": "Basic " + token
         }
     })
 }
 
-export async function getMyId(token) {
-    let url = baseRoute + 'usersGetMe'
+export async function getMe(token) {
+    let url = baseRoute + 'users/me'
     let promise = fetch(url, {
         method: 'GET',
         headers: {
-            "Authorization": "Basic "+token
+            "Authorization": "Basic " + token
         }
     })
         .then(response => (response.json()))
         .then((data) => {
-            return data.ID
+            return data
+        })
+        .catch((error) => {
+            return false
         })
     return await promise
 }
+
 export function getCookie(cname) {
     let name = cname + "=";
     let decodedCookie = decodeURIComponent(document.cookie);
     let ca = decodedCookie.split(';');
-    for(let i = 0; i <ca.length; i++) {
+    for (let i = 0; i < ca.length; i++) {
         let c = ca[i];
         while (c.charAt(0) === ' ') {
             c = c.substring(1);
@@ -82,22 +85,24 @@ export function getCookie(cname) {
     }
     return "";
 }
+
 export async function sendCredentials(login, password) {
+
     let url = baseRoute + 'users/login?' + new URLSearchParams({
         email: login,
         password: password
     })
     let promise =
         fetch(url, {
-        method: 'POST',
+            method: 'POST',
         })
-        .then(response => (response.json())
-        .then(data => {
-            return data
-        }))
-        .catch(error => {
-            return false
-        })
+            .then(response => (response.json())
+                .then(data => {
+                    return data.Token
+                }))
+            .catch(error => {
+                console.log(error)
+            })
     return await promise
 }
 
@@ -108,7 +113,8 @@ export async function createUser(email, password, name, surname, tel, birthDate)
         surname: surname,
         phone: tel,
         date_of_birth_utc: birthDate,
-        password: password
+        password: password,
+        role: "user"
     })
     let promise = fetch(url, {method: 'POST'})
         .then(data => {
@@ -118,4 +124,54 @@ export async function createUser(email, password, name, surname, tel, birthDate)
             return false
         })
     return await promise
+}
+
+async function updatePwd(password,token){
+    let url = baseRoute + 'users/password/me?' + new URLSearchParams({
+        password: password,
+    })
+    let promise = fetch(url, {
+        method: 'PUT',
+        headers: {
+            "Authorization": "Basic " + token
+        }
+    })
+        .then(data => {
+            return true
+        })
+        .catch(error => {
+            return false
+        })
+    return await promise
+}
+export async function updateMyInfo(email, name, surname, tel, birthDate, token) {
+    let url = baseRoute + 'users/me?' + new URLSearchParams({
+        email: email,
+        name: name,
+        surname: surname,
+        phone: tel,
+        date_of_birth_utc: birthDate,
+        role: "user"
+    })
+    let promise = fetch(url, {
+        method: 'PUT',
+        headers: {
+            "Authorization": "Basic " + token
+        }
+    })
+        .then(data => {
+            return true
+        })
+        .catch(error => {
+            return false
+        })
+    return await promise
+}
+
+export async function updateProfile(email, name, surname, tel, birthDate, token,password) {
+    let infoOk = await updateMyInfo(email, name, surname, tel, birthDate, token)
+    if (infoOk){
+        return await updatePwd(password, token)
+    }
+    return false
 }

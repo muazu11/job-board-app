@@ -8,6 +8,6 @@ const config = {
 		require('@tailwindcss/forms'),
 		require('stwui/plugin')
 	]
+
 };
-	
 module.exports = config;
