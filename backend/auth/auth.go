@@ -15,6 +15,10 @@ const (
 	authorizationScheme    = "basic"
 )
 
+var (
+	ErrInvalidToken = errors.New("invalid or missing authorization header")
+)
+
 func HashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 	return string(hash), err
@@ -31,7 +35,7 @@ func TokenFromContext(c *fiber.Ctx) (string, error) {
 		strings.ToLower(headerParams[0]) != authorizationScheme ||
 		headerParams[0] == "" {
 
-		return "", errors.New("invalid or missing authorization header")
+		return "", ErrInvalidToken
 	}
 	return headerParams[1], nil
 }
