@@ -227,7 +227,7 @@
         companyIcon =await  getSvg("company")
         wageIcon =await  getSvg("wage")
         workTimeIcon =await  getSvg("workTime")
-        addressIcon =await  getSvg("address")
+        addressIcon =await  getSvg("workAdress")
     }
     // Need to use onMount to execute after the DOM is ready
     onMount(async () => {
