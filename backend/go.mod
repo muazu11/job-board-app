@@ -6,6 +6,7 @@ require (
 	github.com/georgysavva/scany/v2 v2.0.0
 	github.com/gofiber/fiber/v2 v2.50.0
 	github.com/sanggonlee/gosq v1.2.0
+	github.com/valyala/fastjson v1.6.4
 	golang.org/x/crypto v0.14.0
 )
 

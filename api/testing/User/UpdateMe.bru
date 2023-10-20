@@ -6,7 +6,7 @@ meta {
 
 put {
   url: http://localhost:3000/users/me?email=juan.guapo@mail.com&name=Juanito&surname=Guapo&phone=0771602045&date_of_birth_utc=2000-05-13&password=super_secret
-  body: none
+  body: json
   auth: none
 }
 
@@ -21,4 +21,16 @@ query {
 
 headers {
   Authorization: Basic <token>
+}
+
+body:json {
+  {
+    "email": "juan.guapo@mail.com",
+    "name": "Juan",
+    "surname": "Guapo",
+    "phone": "0764839024",
+    "dateOfBirthUTC": "2000-05-13",
+    "password": "super_secret",
+    "role": "user"
+  }
 }

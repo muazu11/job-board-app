@@ -30,7 +30,7 @@ CREATE TABLE advertisements (
     id serial PRIMARY KEY,
     title text CHECK (length(title) > 1),
     description text,
-    company_id int REFERENCES companies(id),
+    company_id int REFERENCES companies(id) ON DELETE CASCADE,
     wage float,
     address text,
     zip_code text,
@@ -40,8 +40,8 @@ CREATE TABLE advertisements (
 
 CREATE TABLE applications (
     id serial PRIMARY KEY,
-    advertisement_id int REFERENCES advertisements(id),
-    applicant_id int REFERENCES users(id),
+    advertisement_id int REFERENCES advertisements(id) ON DELETE CASCADE,
+    applicant_id int REFERENCES users(id) ON DELETE CASCADE,
     message text,
     created_at timestamptz DEFAULT now(),
     UNIQUE (advertisement_id, applicant_id)

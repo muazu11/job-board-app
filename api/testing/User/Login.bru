@@ -6,11 +6,18 @@ meta {
 
 post {
   url: http://localhost:3000/users/login?email=juan.guapo@mail.com&password=super_secret
-  body: none
+  body: json
   auth: none
 }
 
 query {
   email: juan.guapo@mail.com
   password: super_secret
+}
+
+body:json {
+  {
+    "email": "juan.guapo@mail.com",
+    "password": "super_secret"
+  }
 }

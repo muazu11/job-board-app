@@ -5,22 +5,24 @@ meta {
 }
 
 put {
-  url: http://localhost:3000/advertisements/1?title=Développeur web&description=Poste à pourvoir maintenant.&company_id=1&wage=2100&address=5 rue des Lilas&city=Paris&zip_code=75100&work_time_ns=126000000000000
-  body: none
+  url: http://localhost:3000/advertisements/1
+  body: json
   auth: none
-}
-
-query {
-  title: Développeur web
-  description: Poste à pourvoir maintenant.
-  company_id: 1
-  wage: 2100
-  address: 5 rue des Lilas
-  city: Paris
-  zip_code: 75100
-  work_time_ns: 126000000000000
 }
 
 headers {
   Authorization: Basic {{admin_token}}
+}
+
+body:json {
+  {
+    "title": "Développeur web",
+    "description": "Poste à pourvoir maintenant.",
+    "companyId": 1,
+    "wage": 2500,
+    "address": "5 rue des Lilas",
+    "city": "Paris",
+    "zipCode": "75100",
+    "workTimeNs": 126000000000000
+  }
 }

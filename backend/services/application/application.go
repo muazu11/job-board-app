@@ -5,6 +5,7 @@ import (
 	"jobboard/backend/auth"
 	"jobboard/backend/db"
 	"jobboard/backend/services/user"
+	jsonutil "jobboard/backend/util/json"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,11 +17,27 @@ const (
 )
 
 type Application struct {
-	ID              int
-	AdvertisementID int
-	ApplicantID     int
-	Message         string
-	CreatedAt       time.Time
+	ID              int       `json:"id"`
+	AdvertisementID int       `json:"advertismentID"`
+	ApplicantID     int       `json:"applicantID"`
+	Message         string    `json:"message"`
+	CreatedAt       time.Time `json:"createdAt"`
+}
+
+func DecodeApplication(data jsonutil.Value) (application Application, err error) {
+	application.AdvertisementID, err = data.Get("advertisementID").Int()
+	if err != nil {
+		return
+	}
+	application.ApplicantID, err = data.Get("applicantID").Int()
+	if err != nil {
+		return
+	}
+	application.Message, err = data.Get("message").String()
+	if err != nil {
+		return
+	}
+	return
 }
 
 func (a Application) toArgs() pgx.NamedArgs {
@@ -30,14 +47,6 @@ func (a Application) toArgs() pgx.NamedArgs {
 		"applicant_id":     a.ApplicantID,
 		"message":          a.Message,
 		"created_at":       a.CreatedAt,
-	}
-}
-
-func applicationFromContext(c *fiber.Ctx) Application {
-	return Application{
-		AdvertisementID: c.QueryInt("advertisement_id"),
-		ApplicantID:     c.QueryInt("applicant_id"),
-		Message:         c.Query("message"),
 	}
 }
 
@@ -78,7 +87,14 @@ func (s service) applyHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	application := applicationFromContext(c)
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	application, err := DecodeApplication(jsonVal)
+	if err != nil {
+		return err
+	}
 	application.ApplicantID = user.ID
 
 	return s.add(c.Context(), application)
@@ -95,7 +111,14 @@ func (s service) apply(ctx context.Context, application Application) error {
 }
 
 func (s service) addHandler(c *fiber.Ctx) error {
-	application := applicationFromContext(c)
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	application, err := DecodeApplication(jsonVal)
+	if err != nil {
+		return err
+	}
 	return s.add(c.Context(), application)
 }
 
@@ -112,7 +135,14 @@ func (s service) getHandler(c *fiber.Ctx) error {
 }
 
 func (s service) getAllHandler(c *fiber.Ctx) error {
-	page := db.PageFromContext(c, db.IntColumn)
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	page, err := db.DecodePage(jsonVal)
+	if err != nil {
+		return err
+	}
 	applications, cursors, err := s.getAll(c.Context(), page)
 	if err != nil {
 		return err
@@ -125,7 +155,14 @@ func (s service) updateHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	application := applicationFromContext(c)
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	application, err := DecodeApplication(jsonVal)
+	if err != nil {
+		return err
+	}
 	application.ID = id
 	return s.update(c.Context(), application)
 }

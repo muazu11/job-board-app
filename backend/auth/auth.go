@@ -3,7 +3,9 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/crypto/bcrypt"
@@ -13,13 +15,21 @@ import (
 const (
 	authorizationHeaderKey = "Authorization"
 	authorizationScheme    = "basic"
+
+	minPasswordLen = 8
 )
 
 var (
-	ErrInvalidToken = errors.New("invalid or missing authorization header")
+	ErrInvalidToken     = errors.New("invalid or missing authorization header")
+	ErrPasswordTooShort = fmt.Errorf(
+		"passwords must contain at least %d characters", minPasswordLen,
+	)
 )
 
 func HashPassword(password string) (string, error) {
+	if utf8.RuneCountInString(password) < minPasswordLen {
+		return "", ErrPasswordTooShort
+	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 	return string(hash), err
 }
