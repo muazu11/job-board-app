@@ -13,11 +13,12 @@ type Config struct {
 
 func New(config Config) *fiber.App {
 	server := fiber.New()
+	server.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+	}))
 	if config.Logs {
-		server.Use(logger.New(), cors.New(cors.Config{
-			AllowOrigins: "*",
-			AllowHeaders: "Origin, Content-Type, Accept,Authorization",
-		}))
+		server.Use(logger.New())
 	}
 	return server
 }
