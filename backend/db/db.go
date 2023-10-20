@@ -4,12 +4,16 @@ import (
 	"context"
 	"fmt"
 	"jobboard/backend/services"
+	jsonutil "jobboard/backend/util/json"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
-	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sanggonlee/gosq"
+)
+
+var (
+	ErrInvalidCursor = fmt.Errorf("invalid or missing cursor")
 )
 
 type Config struct {
@@ -85,7 +89,7 @@ func (d DB) QueryPage(
 			"Previous": page.previous,
 		},
 	)
-	args = append([]any{page.cursor, d.pageLimit}, args...)
+	args = append([]any{page.cursor, d.pageLimit + 1}, args...)
 	err = pgxscan.Select(ctx, d.pool, dest, query, args...)
 	if err != nil {
 		return Cursors{}, err
@@ -110,56 +114,38 @@ type Page struct {
 	emptyCursor bool
 }
 
-func newPageString(cursor string, previous bool) Page {
-	return Page{
-		cursor:      cursor,
-		previous:    previous,
-		emptyCursor: cursor == "",
+func NewPage(cursor any, previous bool) (Page, error) {
+	page := Page{
+		cursor:   cursor,
+		previous: previous,
 	}
-}
-
-func newPageInt(cursor int, previous bool) Page {
-	return Page{
-		cursor:      cursor,
-		previous:    previous,
-		emptyCursor: cursor == 0,
-	}
-}
-
-func newPageFloat(cursor float64, previous bool) Page {
-	return Page{
-		cursor:      cursor,
-		previous:    previous,
-		emptyCursor: cursor == 0.,
-	}
-}
-
-func NewPage(cursor any, previous bool) Page {
 	switch c := cursor.(type) {
-	case string:
-		return newPageString(c, previous)
-	case int:
-		return newPageInt(c, previous)
 	case float64:
-		return newPageFloat(c, previous)
+		page.emptyCursor = c == 0.
+	case string:
+		page.emptyCursor = c == ""
 	default:
-		panic("unexpected page cursor type")
+		return page, fmt.Errorf("unsupported cursor type %T", c)
 	}
+	return page, nil
 }
 
-func PageFromContext(c *fiber.Ctx, cursorKind ColumnKind) Page {
-	const cursorKey = "page_cursor"
-	previous := c.QueryBool("page_previous")
-	switch cursorKind {
-	case TextColumn:
-		return newPageString(c.Query(cursorKey), previous)
-	case IntColumn:
-		return newPageInt(c.QueryInt(cursorKey), previous)
-	case FloatColumn:
-		return newPageFloat(c.QueryFloat(cursorKey), previous)
-	default:
-		panic("unexpected page cursor type")
+func DecodePage(data jsonutil.Value) (page Page, err error) {
+	page.previous, err = data.Get("pagePrevious").Bool()
+	if err != nil {
+		return
 	}
+	page.cursor, err = data.Get("pageCursor").Float()
+	if err == nil {
+		page.emptyCursor = page.cursor == 0.
+		return
+	}
+	page.cursor, err = data.Get("pageCursor").String()
+	if err != nil {
+		return page, ErrInvalidCursor
+	}
+	page.emptyCursor = page.cursor == ""
+	return
 }
 
 func (p Page) toArgs(limit int) pgx.NamedArgs {
@@ -171,13 +157,13 @@ func (p Page) toArgs(limit int) pgx.NamedArgs {
 }
 
 type Cursors struct {
-	Previous any
-	Next     any
+	Previous any `json:"previous"`
+	Next     any `json:"next"`
 }
 
 type CursorWrap[T any] struct {
-	Cursors Cursors
-	Data    T
+	Cursors Cursors `json:"cursors"`
+	Data    T       `json:"data"`
 }
 
 func NewCursorWrap[T any](cursors Cursors, data T) CursorWrap[T] {

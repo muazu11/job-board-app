@@ -4,6 +4,7 @@ import (
 	"context"
 	"jobboard/backend/auth"
 	"jobboard/backend/db"
+	jsonutil "jobboard/backend/util/json"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,12 +16,40 @@ const (
 )
 
 type User struct {
-	ID          int
-	Email       string
-	Name        string
-	Surname     string
-	Phone       string
-	DateOfBirth time.Time
+	ID          int       `json:"id"`
+	Email       string    `json:"email"`
+	Name        string    `json:"name"`
+	Surname     string    `json:"surname"`
+	Phone       string    `json:"phone"`
+	DateOfBirth time.Time `json:"dateOfBirthUTC"`
+}
+
+func DecodeUser(data jsonutil.Value) (user User, err error) {
+	user.Email, err = data.Get("email").String()
+	if err != nil {
+		return
+	}
+	user.Name, err = data.Get("name").String()
+	if err != nil {
+		return
+	}
+	user.Surname, err = data.Get("surname").String()
+	if err != nil {
+		return
+	}
+	user.Phone, err = data.Get("phone").String()
+	if err != nil {
+		return
+	}
+	dateOfBirthUTC, err := data.Get("dateOfBirthUTC").String()
+	if err != nil {
+		return
+	}
+	user.DateOfBirth, err = time.Parse(time.DateOnly, dateOfBirthUTC)
+	if err != nil {
+		return
+	}
+	return
 }
 
 func (u User) toArgs() pgx.NamedArgs {
@@ -34,26 +63,28 @@ func (u User) toArgs() pgx.NamedArgs {
 	}
 }
 
-func userFromContext(c *fiber.Ctx) (User, error) {
-	dateOfBirth, err := time.Parse(time.DateOnly, c.Query("date_of_birth_utc"))
-	if err != nil {
-		return User{}, err
-	}
-	user := User{
-		Email:       c.Query("email"),
-		Name:        c.Query("name"),
-		Surname:     c.Query("surname"),
-		Phone:       c.Query("phone"),
-		DateOfBirth: dateOfBirth,
-	}
-	return user, nil
-}
-
 type Account struct {
 	UserID       int    `json:"-"`
 	PasswordHash string `json:"-"`
 	AuthToken    string `json:"-"`
-	Role         Role
+	Role         Role   `json:"role"`
+}
+
+func DecodeAccount(data jsonutil.Value) (account Account, err error) {
+	role, err := data.Get("role").String()
+	account.Role = Role(role)
+	if err != nil {
+		return
+	}
+	password, err := data.Get("password").String()
+	if err != nil {
+		return
+	}
+	account.PasswordHash, err = auth.HashPassword(password)
+	if err != nil {
+		return
+	}
+	return
 }
 
 func (a Account) toArgs() pgx.NamedArgs {
@@ -62,19 +93,6 @@ func (a Account) toArgs() pgx.NamedArgs {
 		"password_hash": a.PasswordHash,
 		"role":          a.Role,
 	}
-}
-
-func accountFromContext(c *fiber.Ctx) (Account, error) {
-	password := c.Query("password")
-	passwordHash, err := auth.HashPassword(password)
-	if err != nil {
-		return Account{}, err
-	}
-	account := Account{
-		PasswordHash: passwordHash,
-		Role:         Role(c.Query("role")),
-	}
-	return account, nil
 }
 
 type UserAccount struct {
@@ -89,7 +107,7 @@ func (u *UserAccountPage) Len() int {
 }
 
 func (u *UserAccountPage) GetCursor(idx int) any {
-	return (*u)[idx].ID
+	return (*u)[idx].User.ID
 }
 
 func (u *UserAccountPage) Slice(start, end int) {
@@ -107,7 +125,7 @@ func (r Role) String() string {
 	return string(r)
 }
 
-type Token struct {
+type tokenWrap struct {
 	Token string
 }
 
@@ -144,11 +162,15 @@ func Init(server *fiber.App, db db.DB, adminAuthorizer fiber.Handler) Service {
 
 // :TODO think about transaction
 func (s Service) addHandler(c *fiber.Ctx) error {
-	user, err := userFromContext(c)
+	jsonVal, err := jsonutil.Parse(c.Body())
 	if err != nil {
 		return err
 	}
-	account, err := accountFromContext(c)
+	user, err := DecodeUser(jsonVal)
+	if err != nil {
+		return err
+	}
+	account, err := DecodeAccount(jsonVal)
 	if err != nil {
 		return err
 	}
@@ -175,7 +197,14 @@ func (s Service) getHandler(c *fiber.Ctx) error {
 }
 
 func (s Service) getAllHandler(c *fiber.Ctx) error {
-	page := db.PageFromContext(c, db.IntColumn)
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	page, err := db.DecodePage(jsonVal)
+	if err != nil {
+		return err
+	}
 	userAccounts, cursors, err := s.getAll(c.Context(), page)
 	if err != nil {
 		return err
@@ -188,18 +217,25 @@ func (s Service) updateHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	user, err := userFromContext(c)
+	jsonVal, err := jsonutil.Parse(c.Body())
 	if err != nil {
 		return err
 	}
-	role := Role(c.Query("role"))
+	user, err := DecodeUser(jsonVal)
+	if err != nil {
+		return err
+	}
+	role, err := jsonVal.Get("role").String()
+	if err != nil {
+		return err
+	}
 
 	user.ID = id
 	err = s.update(c.Context(), user)
 	if err != nil {
 		return err
 	}
-	return s.updateRole(c.Context(), id, role)
+	return s.updateRole(c.Context(), id, Role(role))
 }
 
 func (s Service) updatePasswordHandler(c *fiber.Ctx) error {
@@ -207,13 +243,20 @@ func (s Service) updatePasswordHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	password := c.Query("password")
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	password, err := jsonVal.Get("password").String()
+	if err != nil {
+		return err
+	}
 
 	token, err := s.updatePassword(c.Context(), id, password)
 	if err != nil {
 		return err
 	}
-	return c.JSON(Token{Token: token})
+	return c.JSON(tokenWrap{Token: token})
 }
 
 func (s Service) deleteHandler(c *fiber.Ctx) error {
@@ -241,7 +284,11 @@ func (s Service) updateMeHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	user, err := userFromContext(c)
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	user, err := DecodeUser(jsonVal)
 	if err != nil {
 		return err
 	}
@@ -254,13 +301,20 @@ func (s Service) updateMyPasswordHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	password := c.Query("password")
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	password, err := jsonVal.Get("password").String()
+	if err != nil {
+		return err
+	}
 
 	token, err = s.updatePasswordByToken(c.Context(), token, password)
 	if err != nil {
 		return err
 	}
-	return c.JSON(Token{Token: token})
+	return c.JSON(tokenWrap{Token: token})
 }
 
 func (s Service) deleteMeHandler(c *fiber.Ctx) error {
@@ -283,10 +337,7 @@ func (s Service) loginHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	token := struct{ Token string }{
-		Token: account.AuthToken,
-	}
-	return c.JSON(token)
+	return c.JSON(tokenWrap{Token: account.AuthToken})
 }
 
 func (s Service) add(ctx context.Context, user *User) error {
@@ -395,7 +446,10 @@ func (s Service) updateByToken(ctx context.Context, token string, user User) err
 	)
 }
 
-func (s Service) updatePasswordByToken(ctx context.Context, token, password string) (string, error) {
+func (s Service) updatePasswordByToken(
+	ctx context.Context, token, password string,
+) (string, error) {
+
 	passwordHash, err := auth.HashPassword(password)
 	if err != nil {
 		return "", err

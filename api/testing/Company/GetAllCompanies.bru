@@ -5,16 +5,18 @@ meta {
 }
 
 get {
-  url: http://localhost:3000/companies?page_cursor=0&page_previous=false
-  body: none
+  url: http://localhost:3000/companies
+  body: json
   auth: none
-}
-
-query {
-  page_cursor: 0
-  page_previous: false
 }
 
 headers {
   Authorization: Basic {{admin_token}}
+}
+
+body:json {
+  {
+    "pageCursor": 0,
+    "pagePrevious": false
+  }
 }

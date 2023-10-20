@@ -7,6 +7,7 @@ import (
 	"jobboard/backend/db"
 	"jobboard/backend/services/company"
 	"jobboard/backend/services/user"
+	jsonutil "jobboard/backend/util/json"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -19,15 +20,52 @@ const (
 )
 
 type Advertisement struct {
-	ID          int
-	Title       string
-	Description string
-	CompanyID   int
-	Wage        float64
-	Address     string
-	ZipCode     string
-	City        string
-	WorkTime    time.Duration `json:"WorkTimeNs"`
+	ID          int           `json:"id"`
+	Title       string        `json:"title"`
+	Description string        `json:"description"`
+	CompanyID   int           `json:"companyID"`
+	Wage        float64       `json:"wage"`
+	Address     string        `json:"address"`
+	ZipCode     string        `json:"zipCode"`
+	City        string        `json:"city"`
+	WorkTime    time.Duration `json:"workTimeNs"`
+}
+
+func DecodeAdvertisement(data jsonutil.Value) (advertisement Advertisement, err error) {
+	advertisement.Title, err = data.Get("title").String()
+	if err != nil {
+		return
+	}
+	advertisement.Description, err = data.Get("description").String()
+	if err != nil {
+		return
+	}
+	advertisement.CompanyID, err = data.Get("companyID").Int()
+	if err != nil {
+		return
+	}
+	advertisement.Wage, err = data.Get("wage").Float()
+	if err != nil {
+		return
+	}
+	advertisement.Address, err = data.Get("address").String()
+	if err != nil {
+		return
+	}
+	advertisement.ZipCode, err = data.Get("zipCode").String()
+	if err != nil {
+		return
+	}
+	advertisement.City, err = data.Get("city").String()
+	if err != nil {
+		return
+	}
+	workTimeNs, err := data.Get("workTimeNs").Int()
+	advertisement.WorkTime = time.Duration(workTimeNs)
+	if err != nil {
+		return
+	}
+	return
 }
 
 func (a Advertisement) toArgs() pgx.NamedArgs {
@@ -41,19 +79,6 @@ func (a Advertisement) toArgs() pgx.NamedArgs {
 		"zip_code":    a.ZipCode,
 		"city":        a.City,
 		"work_time":   a.WorkTime,
-	}
-}
-
-func advertisementFromContext(c *fiber.Ctx) Advertisement {
-	return Advertisement{
-		Title:       c.Query("title"),
-		Description: c.Query("description"),
-		CompanyID:   c.QueryInt("company_id"),
-		Wage:        c.QueryFloat("wage"),
-		Address:     c.Query("address"),
-		ZipCode:     c.Query("zip_code"),
-		City:        c.Query("city"),
-		WorkTime:    time.Duration(c.QueryInt("work_time_ns")),
 	}
 }
 
@@ -109,7 +134,14 @@ func Init(server *fiber.App, db db.DB, user user.Service, adminAuthorizer fiber.
 }
 
 func (s service) addHandler(c *fiber.Ctx) error {
-	advertisement := advertisementFromContext(c)
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	advertisement, err := DecodeAdvertisement(jsonVal)
+	if err != nil {
+		return err
+	}
 	return s.add(c.Context(), &advertisement)
 }
 
@@ -126,7 +158,14 @@ func (s service) getHandler(c *fiber.Ctx) error {
 }
 
 func (s service) getAllHandler(c *fiber.Ctx) error {
-	page := db.PageFromContext(c, db.IntColumn)
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	page, err := db.DecodePage(jsonVal)
+	if err != nil {
+		return err
+	}
 	advertisements, cursors, err := s.getAll(c.Context(), page)
 	if err != nil {
 		return err
@@ -139,7 +178,14 @@ func (s service) updateHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	advertisement := advertisementFromContext(c)
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	advertisement, err := DecodeAdvertisement(jsonVal)
+	if err != nil {
+		return err
+	}
 	advertisement.ID = id
 	return s.update(c.Context(), advertisement)
 }
@@ -163,7 +209,14 @@ func (s service) getAllWithDetailHandler(c *fiber.Ctx) error {
 	} else if !errors.Is(err, auth.ErrInvalidToken) {
 		return err
 	}
-	page := db.PageFromContext(c, db.IntColumn)
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	page, err := db.DecodePage(jsonVal)
+	if err != nil {
+		return err
+	}
 
 	advertisements, cursors, err := s.getAllWithDetail(c.Context(), page, user.ID)
 	if err != nil {

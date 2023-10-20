@@ -3,6 +3,7 @@ package company
 import (
 	"context"
 	"jobboard/backend/db"
+	jsonutil "jobboard/backend/util/json"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5"
@@ -13,10 +14,26 @@ const (
 )
 
 type Company struct {
-	ID      int
-	Name    string
-	Siren   string
-	LogoURL string
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	Siren   string `json:"siren"`
+	LogoURL string `json:"logoURL"`
+}
+
+func DecodeCompany(data jsonutil.Value) (company Company, err error) {
+	company.Name, err = data.Get("name").String()
+	if err != nil {
+		return
+	}
+	company.Siren, err = data.Get("siren").String()
+	if err != nil {
+		return
+	}
+	company.LogoURL, err = data.Get("logoURL").String()
+	if err != nil {
+		return
+	}
+	return
 }
 
 func (c Company) toArgs() pgx.NamedArgs {
@@ -25,14 +42,6 @@ func (c Company) toArgs() pgx.NamedArgs {
 		"name":     c.Name,
 		"siren":    c.Siren,
 		"logo_url": c.LogoURL,
-	}
-}
-
-func companyFromContext(c *fiber.Ctx) Company {
-	return Company{
-		Name:    c.Query("name"),
-		Siren:   c.Query("siren"),
-		LogoURL: c.Query("logo_url"),
 	}
 }
 
@@ -64,7 +73,14 @@ func Init(server *fiber.App, db db.DB, adminAuthorizer fiber.Handler) {
 }
 
 func (s service) addHandler(c *fiber.Ctx) error {
-	company := companyFromContext(c)
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	company, err := DecodeCompany(jsonVal)
+	if err != nil {
+		return err
+	}
 	return s.add(c.Context(), &company)
 }
 
@@ -81,7 +97,14 @@ func (s service) getHandler(c *fiber.Ctx) error {
 }
 
 func (s service) getAllHandler(c *fiber.Ctx) error {
-	page := db.PageFromContext(c, db.IntColumn)
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	page, err := db.DecodePage(jsonVal)
+	if err != nil {
+		return err
+	}
 	companies, cursors, err := s.getAll(c.Context(), page)
 	if err != nil {
 		return err
@@ -94,7 +117,14 @@ func (s service) updateHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	company := companyFromContext(c)
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	company, err := DecodeCompany(jsonVal)
+	if err != nil {
+		return err
+	}
 	company.ID = id
 	return s.update(c.Context(), company)
 }

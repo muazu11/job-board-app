@@ -5,20 +5,23 @@ meta {
 }
 
 put {
-  url: http://localhost:3000/users/2?email=juan.guapo@mail.com&name=Juan&surname=Guapo&phone=0771602045&date_of_birth_utc=2000-05-13&password=super_secret
-  body: none
+  url: http://localhost:3000/users/2
+  body: json
   auth: none
-}
-
-query {
-  email: juan.guapo@mail.com
-  name: Juan
-  surname: Guapo
-  phone: 0771602045
-  date_of_birth_utc: 2000-05-13
-  password: super_secret
 }
 
 headers {
   Authorization: Basic {{admin_token}}
+}
+
+body:json {
+  {
+    "email": "juan.guapo@mail.com",
+    "name": "Juan",
+    "surname": "Guapo",
+    "phone": "0756981235",
+    "dateOfBirthUTC": "2000-05-13",
+    "password": "super_secret",
+    "role": "user"
+  }
 }

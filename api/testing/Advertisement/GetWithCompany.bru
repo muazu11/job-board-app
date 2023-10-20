@@ -5,7 +5,18 @@ meta {
 }
 
 get {
-  url: http://localhost:3000/advertisements/with_company
-  body: none
+  url: http://localhost:3000/advertisements/with_detail
+  body: json
   auth: none
+}
+
+headers {
+  ~Authorization: Basic {{admin_token}}
+}
+
+body:json {
+  {
+    "pageCursor": 0,
+    "pagePrevious": false
+  }
 }

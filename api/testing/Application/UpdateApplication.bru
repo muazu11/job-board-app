@@ -5,17 +5,19 @@ meta {
 }
 
 put {
-  url: http://localhost:3000/applications/1?advertisement_id=1&applicant_id=1&message=Bonjour, embauchez moi svp.
-  body: none
+  url: http://localhost:3000/applications/1
+  body: json
   auth: none
-}
-
-query {
-  advertisement_id: 1
-  applicant_id: 1
-  message: Bonjour, embauchez moi svp.
 }
 
 headers {
   Authorization: Basic {{admin_token}}
+}
+
+body:json {
+  {
+    "advertisementID": 1,
+    "applicantID": 1,
+    "message": "Bonjour, embauchez moi svp."
+  }
 }
