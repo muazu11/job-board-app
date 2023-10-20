@@ -283,7 +283,10 @@ func (s Service) loginHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(Token{Token: account.AuthToken})
+	token := struct{ Token string }{
+		Token: account.AuthToken,
+	}
+	return c.JSON(token)
 }
 
 func (s Service) add(ctx context.Context, user *User) error {
