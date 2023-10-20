@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/sanggonlee/gosq"
 )
 
 type Config struct {
@@ -65,19 +66,27 @@ func (d DB) QueryRow(ctx context.Context, dest any, query string, args ...any) e
 	return pgxscan.Get(ctx, d.pool, dest, query, args...)
 }
 
-func (d DB) QueryPage(ctx context.Context, dest Pageable, query, column string, page Page) (Cursors, error) {
+func (d DB) QueryPage(
+	ctx context.Context, dest Pageable, query, column string, page Page, args ...any,
+) (Cursors, error) {
+
 	if page.emptyCursor && page.previous {
 		return Cursors{Next: page.cursor}, nil
 	}
 
-	query = fmt.Sprintf(`
-		%s
-		WHERE (NOT @previous AND %s > @cursor) OR (@previous AND %s < @cursor)
-		ORDER BY %s
-		LIMIT @limit`,
-		query, column, column, column,
+	query, err := gosq.Compile(`
+		{{ .Query }}
+		WHERE {{ .Column }} {{ [if] .Previous [then] < [else] > }} $1
+		ORDER BY {{ .Column }}
+		LIMIT $2`,
+		map[string]any{
+			"Query":    query,
+			"Column":   column,
+			"Previous": page.previous,
+		},
 	)
-	err := pgxscan.Select(ctx, d.pool, dest, query, page.toArgs(d.pageLimit+1))
+	args = append([]any{page.cursor, d.pageLimit}, args...)
+	err = pgxscan.Select(ctx, d.pool, dest, query, args...)
 	if err != nil {
 		return Cursors{}, err
 	}

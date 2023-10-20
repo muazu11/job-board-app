@@ -5,6 +5,7 @@ go 1.21.1
 require (
 	github.com/georgysavva/scany/v2 v2.0.0
 	github.com/gofiber/fiber/v2 v2.50.0
+	github.com/sanggonlee/gosq v1.2.0
 	golang.org/x/crypto v0.14.0
 )
 
@@ -13,7 +14,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/lib/pq v1.10.2 // indirect
-	github.com/stretchr/testify v1.8.4 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	golang.org/x/sync v0.2.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 )

@@ -21,7 +21,7 @@ func main() {
 	adminAuthorizer := auth.NewMiddleware(user.RoleAdmin.String())
 
 	userService := user.Init(server, db, adminAuthorizer)
-	advertisement.Init(server, db, adminAuthorizer)
+	advertisement.Init(server, db, userService, adminAuthorizer)
 	application.Init(server, db, userService, adminAuthorizer)
 	company.Init(server, db, adminAuthorizer)
 
