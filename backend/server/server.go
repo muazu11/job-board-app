@@ -7,18 +7,30 @@ import (
 	"jobboard/backend/db"
 	jsonutil "jobboard/backend/utils/json"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cache"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+)
+
+const (
+	cacheExpiration = time.Minute * 10
 )
 
 type Config struct {
 	Port int
 	Logs bool
+}
+
+type server struct {
+	*fiber.App
+	cacheStorage fiber.Storage
 }
 
 func New(config Config) *fiber.App {
@@ -27,10 +39,15 @@ func New(config Config) *fiber.App {
 			ErrorHandler: errorHandler,
 		},
 	)
-	server.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-	}))
+	server.Use(
+		cors.New(cors.Config{
+			AllowOrigins: "*",
+			AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+		}),
+		cache.New(cache.Config{
+			Expiration: cacheExpiration,
+		}),
+	)
 	if config.Logs {
 		server.Use(logger.New())
 	}
@@ -53,6 +70,8 @@ func parseError(err error) (int, string) {
 			return fiber.StatusUnauthorized, capitalize(err.Error())
 		case auth.ErrPasswordTooShort, db.ErrInvalidCursor:
 			return fiber.StatusUnprocessableEntity, capitalize(err.Error())
+		case pgx.ErrNoRows:
+			return fiber.StatusNotFound, "Not found"
 		}
 
 		switch e := err.(type) {
