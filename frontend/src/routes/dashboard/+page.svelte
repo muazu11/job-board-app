@@ -1,24 +1,13 @@
 <script>
-    import { Button, Layout, Tabs, Card, Table, Pagination } from "stwui";
-
-    const tabs = [
-        {
-            title: "Users",
-            key: "users",
-        },
-        {
-            title: "Companies",
-            key: "companies",
-        },
-        {
-            title: "Advertisements",
-            key: "advertisements",
-        },
-        {
-            title: "Applications",
-            key: "applications",
-        },
-    ];
+    import { onMount } from "svelte";
+    import {
+        getCookie,
+        getAllUsers,
+        getAllCompanies,
+        getAllAdvertisements,
+        getAllApplications,
+    } from "$lib";
+    import { Button, Layout, Card, Table } from "stwui";
 
     let userColumns = [
         { label: "email", placement: "left" },
@@ -73,6 +62,29 @@
             password: "......",
         },
     ];
+
+    let token;
+    let users = [];
+    let companies = [];
+    let advertisements = [];
+    let applications = [];
+
+    onMount(async () => {
+        token = getCookie("token");
+
+        let userResp = await getAllUsers(token);
+        users = userResp["data"];
+
+        let companyResp = await getAllCompanies(token);
+        companies = companyResp["data"];
+
+        let advertisementResp = await getAllAdvertisements(token);
+        advertisements = advertisementResp["data"];
+
+        let applicationResp = await getAllApplications(token);
+        applications = applicationResp["data"];
+        console.log(applications);
+    });
 </script>
 
 <div style="display: contents">
@@ -85,12 +97,12 @@
         </Layout.Header>
         <Layout.Content>
             <Layout.Content.Body>
-                <Card bordered={false} class="h-[calc(100vh-14rem)]">
+                <Card bordered={false} class="m-8">
                     <Card.Header
                         slot="header"
                         class="font-bold text-lg flex justify-between items-center py-3"
                     >
-                        Card Header
+                        Users
                         <Button slot="extra" type="primary">New Item</Button>
                     </Card.Header>
                     <Card.Content
@@ -104,40 +116,158 @@
                         >
                             <Table.Header slot="header" />
                             <Table.Body slot="body">
-                                {#each results as item}
-                                    <Table.Body.Row id={item.id}>
-                                        <Table.Body.Row.Cell column={0}
-                                            >{item.email}</Table.Body.Row.Cell
-                                        >
-                                        <Table.Body.Row.Cell column={1}
-                                            >{item.name}</Table.Body.Row.Cell
-                                        >
-                                        <Table.Body.Row.Cell column={2}
-                                            >{item.surname}</Table.Body.Row.Cell
-                                        >
-                                        <Table.Body.Row.Cell column={3}
-                                            >{item.date_of_birth}</Table.Body.Row.Cell
-                                        >
-                                        <Table.Body.Row.Cell column={4}
-                                            >{item.role}</Table.Body.Row.Cell
-                                        >
-                                        <Table.Body.Row.Cell column={5}
-                                            >{item.password}</Table.Body.Row.Cell
-                                        >
+                                {#each users as user}
+                                    <Table.Body.Row id={user.id}>
+                                        <Table.Body.Row.Cell column={0}>
+                                            {user.email}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={1}>
+                                            {user.name}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={2}>
+                                            {user.surname}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={3}>
+                                            {user.dateOfBirthUTC}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={4}>
+                                            {user.role}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={5}>
+                                            {user.password}
+                                        </Table.Body.Row.Cell>
                                     </Table.Body.Row>
                                 {/each}
                             </Table.Body>
-                            <!--  <Table.Footer slot="footer">
-                                <Pagination
-                                    start={data.start}
-                                    end={data.end}
-                                    total={data.total}
-                                    currentPage={parseInt(currentPage)}
-                                    {onPreviousClick}
-                                    {onNextClick}
-                                    {onPageClick}
-                                />
-                            </Table.Footer>-->
+                        </Table>
+                    </Card.Content>
+                </Card>
+
+                <Card bordered={false} class="m-8">
+                    <Card.Header
+                        slot="header"
+                        class="font-bold text-lg flex justify-between items-center py-3"
+                    >
+                        Companies
+                        <Button slot="extra" type="primary">New Item</Button>
+                    </Card.Header>
+                    <Card.Content
+                        slot="content"
+                        class="p-0 sm:p-0"
+                        style="height: calc(100% - 64px);"
+                    >
+                        <Table
+                            class="rounded-md overflow-hidden h-full"
+                            columns={companyColumns}
+                        >
+                            <Table.Header slot="header" />
+                            <Table.Body slot="body">
+                                {#each companies as company}
+                                    <Table.Body.Row id={company.id}>
+                                        <Table.Body.Row.Cell column={0}>
+                                            {company.name}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={1}>
+                                            {company.siren}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={2}>
+                                            {company.logoURL}
+                                        </Table.Body.Row.Cell>
+                                    </Table.Body.Row>
+                                {/each}
+                            </Table.Body>
+                        </Table>
+                    </Card.Content>
+                </Card>
+
+                <Card bordered={false} class="m-8">
+                    <Card.Header
+                        slot="header"
+                        class="font-bold text-lg flex justify-between items-center py-3"
+                    >
+                        Advertisements
+                        <Button slot="extra" type="primary">New Item</Button>
+                    </Card.Header>
+                    <Card.Content
+                        slot="content"
+                        class="p-0 sm:p-0"
+                        style="height: calc(100% - 64px);"
+                    >
+                        <Table
+                            class="rounded-md overflow-hidden h-full"
+                            columns={advertisementColumns}
+                        >
+                            <Table.Header slot="header" />
+                            <Table.Body slot="body">
+                                {#each advertisements as advertisement}
+                                    <Table.Body.Row id={advertisement.id}>
+                                        <Table.Body.Row.Cell column={0}>
+                                            {advertisement.companyID}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={1}>
+                                            {advertisement.title}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={2}>
+                                            {advertisement.description}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={3}>
+                                            {advertisement.wage}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={4}>
+                                            {advertisement.adress}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={5}>
+                                            {advertisement.zipCode}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={6}>
+                                            {advertisement.city}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={7}>
+                                            {advertisement.workTimeNs}
+                                        </Table.Body.Row.Cell>
+                                    </Table.Body.Row>
+                                {/each}
+                            </Table.Body>
+                        </Table>
+                    </Card.Content>
+                </Card>
+
+                <Card bordered={false} class="m-8">
+                    <Card.Header
+                        slot="header"
+                        class="font-bold text-lg flex justify-between items-center py-3"
+                    >
+                        Applications
+                        <Button slot="extra" type="primary">New Item</Button>
+                    </Card.Header>
+                    <Card.Content
+                        slot="content"
+                        class="p-0 sm:p-0"
+                        style="height: calc(100% - 64px);"
+                    >
+                        <Table
+                            class="rounded-md overflow-hidden h-full"
+                            columns={applicationColumns}
+                        >
+                            <Table.Header slot="header" />
+                            <Table.Body slot="body">
+                                {#each applications as application}
+                                    <Table.Body.Row id={application.id}>
+                                        <Table.Body.Row.Cell column={0}>
+                                            {application.advertisementID}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={1}>
+                                            {application.applicantID}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={2}>
+                                            {application.message}
+                                        </Table.Body.Row.Cell>
+                                        <Table.Body.Row.Cell column={3}>
+                                            {application.createdAt}
+                                        </Table.Body.Row.Cell>
+                                    </Table.Body.Row>
+                                {/each}
+                            </Table.Body>
                         </Table>
                     </Card.Content>
                 </Card>
