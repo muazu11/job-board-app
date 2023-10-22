@@ -12,8 +12,10 @@ import (
 	"github.com/sanggonlee/gosq"
 )
 
+type CursorError error
+
 var (
-	ErrInvalidCursor = fmt.Errorf("invalid or missing cursor")
+	ErrInvalidCursor CursorError = fmt.Errorf("invalid cursor type")
 )
 
 type Config struct {
@@ -99,14 +101,6 @@ func (d DB) QueryPage(
 	return cursors, nil
 }
 
-type ColumnKind int
-
-const (
-	TextColumn ColumnKind = iota
-	IntColumn
-	FloatColumn
-)
-
 type Page struct {
 	cursor   any
 	previous bool
@@ -125,7 +119,7 @@ func NewPage(cursor any, previous bool) (Page, error) {
 	case string:
 		page.emptyCursor = c == ""
 	default:
-		return page, fmt.Errorf("unsupported cursor type %T", c)
+		return page, ErrInvalidCursor
 	}
 	return page, nil
 }
@@ -142,7 +136,7 @@ func DecodePage(data jsonutil.Value) (page Page, err error) {
 	}
 	page.cursor, err = data.Get("pageCursor").String()
 	if err != nil {
-		return page, ErrInvalidCursor
+		return
 	}
 	page.emptyCursor = page.cursor == ""
 	return
