@@ -3,6 +3,7 @@ package company
 import (
 	"context"
 	"jobboard/backend/db"
+	"jobboard/backend/server"
 	jsonutil "jobboard/backend/utils/json"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,13 +17,13 @@ type service struct {
 	db db.DB
 }
 
-func Init(server *fiber.App, db db.DB, adminAuthorizer fiber.Handler) {
+func Init(app *fiber.App, db db.DB, adminAuthorizer fiber.Handler) {
 	service := service{db: db}
-	server.Post(apiPathRoot, adminAuthorizer, service.addHandler)
-	server.Get(apiPathRoot+"/:id<int>", adminAuthorizer, service.getHandler)
-	server.Get(apiPathRoot, adminAuthorizer, service.getAllHandler)
-	server.Put(apiPathRoot+"/:id<int>", adminAuthorizer, service.updateHandler)
-	server.Delete(apiPathRoot+"/:id<int>", adminAuthorizer, service.deleteHandler)
+	app.Post(apiPathRoot, adminAuthorizer, server.Create, service.addHandler)
+	app.Get(apiPathRoot+"/:id<int>", adminAuthorizer, service.getHandler)
+	app.Get(apiPathRoot, adminAuthorizer, service.getAllHandler)
+	app.Put(apiPathRoot+"/:id<int>", adminAuthorizer, server.NoContent, service.updateHandler)
+	app.Delete(apiPathRoot+"/:id<int>", adminAuthorizer, server.NoContent, service.deleteHandler)
 }
 
 func (s service) addHandler(c *fiber.Ctx) error {
@@ -34,11 +35,7 @@ func (s service) addHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	err = s.add(c.Context(), &company)
-	if err != nil {
-		return err
-	}
-	return c.SendStatus(fiber.StatusCreated)
+	return s.add(c.Context(), &company)
 }
 
 func (s service) add(ctx context.Context, company *Company) error {
@@ -103,11 +100,7 @@ func (s service) updateHandler(c *fiber.Ctx) error {
 		return err
 	}
 	company.ID = id
-	err = s.update(c.Context(), company)
-	if err != nil {
-		return err
-	}
-	return c.SendStatus(fiber.StatusNoContent)
+	return s.update(c.Context(), company)
 }
 
 func (s service) update(ctx context.Context, company Company) error {
@@ -123,11 +116,7 @@ func (s service) deleteHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	err = s.delete(c.Context(), id)
-	if err != nil {
-		return err
-	}
-	return c.SendStatus(fiber.StatusNoContent)
+	return s.delete(c.Context(), id)
 }
 
 func (s service) delete(ctx context.Context, id int) error {
