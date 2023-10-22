@@ -29,10 +29,6 @@ export async function getAllAds(token = "", pageCursor = 0, pagePrevious = false
       headers: {
         "Authorization": "Basic " + token
       },
-      body: JSON.stringify({
-        pageCursor: pageCursor,
-        pagePrevious: pagePrevious
-      })
     })
   }
   let promise = toFetch.then(response => (response.json()))
