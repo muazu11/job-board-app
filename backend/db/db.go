@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"jobboard/backend/services"
-	jsonutil "jobboard/backend/util/json"
+	jsonutil "jobboard/backend/utils/json"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5"
@@ -73,11 +73,11 @@ func (d DB) QueryRow(ctx context.Context, dest any, query string, args ...any) e
 }
 
 func (d DB) QueryPage(
-	ctx context.Context, dest Pageable, query, column string, page Page, args ...any,
+	ctx context.Context, dest Pageable, query, column string, pageRef PageRef, args ...any,
 ) (Cursors, error) {
 
-	if page.emptyCursor && page.previous {
-		return Cursors{Next: page.cursor}, nil
+	if pageRef.emptyCursor && pageRef.previous {
+		return Cursors{Next: pageRef.cursor}, nil
 	}
 
 	query, err := gosq.Compile(`
@@ -88,61 +88,61 @@ func (d DB) QueryPage(
 		map[string]any{
 			"Query":    query,
 			"Column":   column,
-			"Previous": page.previous,
+			"Previous": pageRef.previous,
 		},
 	)
-	args = append([]any{page.cursor, d.pageLimit + 1}, args...)
+	args = append([]any{pageRef.cursor, d.pageLimit + 1}, args...)
 	err = pgxscan.Select(ctx, d.pool, dest, query, args...)
 	if err != nil {
 		return Cursors{}, err
 	}
 
-	cursors := d.processPage(dest, page)
+	cursors := d.processPage(dest, pageRef)
 	return cursors, nil
 }
 
-type Page struct {
+type PageRef struct {
 	cursor   any
 	previous bool
 
 	emptyCursor bool
 }
 
-func NewPage(cursor any, previous bool) (Page, error) {
-	page := Page{
+func NewPageRef(cursor any, previous bool) (PageRef, error) {
+	pageRef := PageRef{
 		cursor:   cursor,
 		previous: previous,
 	}
 	switch c := cursor.(type) {
 	case float64:
-		page.emptyCursor = c == 0.
+		pageRef.emptyCursor = c == 0.
 	case string:
-		page.emptyCursor = c == ""
+		pageRef.emptyCursor = c == ""
 	default:
-		return page, ErrInvalidCursor
+		return pageRef, ErrInvalidCursor
 	}
-	return page, nil
+	return pageRef, nil
 }
 
-func DecodePage(data jsonutil.Value) (page Page, err error) {
-	page.previous, err = data.Get("pagePrevious").Bool()
+func DecodePageRef(data jsonutil.Value) (pageRef PageRef, err error) {
+	pageRef.previous, err = data.Get("pagePrevious").Bool()
 	if err != nil {
 		return
 	}
-	page.cursor, err = data.Get("pageCursor").Float()
+	pageRef.cursor, err = data.Get("pageCursor").Float()
 	if err == nil {
-		page.emptyCursor = page.cursor == 0.
+		pageRef.emptyCursor = pageRef.cursor == 0.
 		return
 	}
-	page.cursor, err = data.Get("pageCursor").String()
+	pageRef.cursor, err = data.Get("pageCursor").String()
 	if err != nil {
 		return
 	}
-	page.emptyCursor = page.cursor == ""
+	pageRef.emptyCursor = pageRef.cursor == ""
 	return
 }
 
-func (p Page) toArgs(limit int) pgx.NamedArgs {
+func (p PageRef) toArgs(limit int) pgx.NamedArgs {
 	return pgx.NamedArgs{
 		"cursor":   p.cursor,
 		"previous": p.previous,
@@ -155,13 +155,13 @@ type Cursors struct {
 	Next     any `json:"next"`
 }
 
-type CursorWrap[T any] struct {
+type Page[T any] struct {
 	Cursors Cursors `json:"cursors"`
 	Data    T       `json:"data"`
 }
 
-func NewCursorWrap[T any](cursors Cursors, data T) CursorWrap[T] {
-	return CursorWrap[T]{
+func NewPage[T any](cursors Cursors, data T) Page[T] {
+	return Page[T]{
 		Cursors: cursors,
 		Data:    data,
 	}
@@ -173,12 +173,12 @@ type Pageable interface {
 	Slice(start, end int)
 }
 
-func (d DB) processPage(dest Pageable, page Page) Cursors {
+func (d DB) processPage(dest Pageable, pageRef PageRef) Cursors {
 	destLen := dest.Len()
 	canContinue := destLen == d.pageLimit+1
 
 	var cursors Cursors
-	if page.previous {
+	if pageRef.previous {
 		if destLen != 0 {
 			cursors.Next = dest.GetCursor(destLen - 1)
 		}
@@ -187,7 +187,7 @@ func (d DB) processPage(dest Pageable, page Page) Cursors {
 			dest.Slice(1, destLen)
 		}
 	} else {
-		if !page.emptyCursor && destLen != 0 {
+		if !pageRef.emptyCursor && destLen != 0 {
 			cursors.Previous = dest.GetCursor(0)
 		}
 		if canContinue {

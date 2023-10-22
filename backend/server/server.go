@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"jobboard/backend/auth"
 	"jobboard/backend/db"
-	jsonutil "jobboard/backend/util/json"
+	jsonutil "jobboard/backend/utils/json"
 	"strings"
 	"unicode"
 
