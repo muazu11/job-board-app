@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/public'
 
 const baseRoute = "http://" + env.PUBLIC_API_HOST + ":" + env.PUBLIC_API_PORT + "/"
+//const baseRoute = "http://" + "localhost" + ":" + "3000" + "/"
 
 export function Advertisement(id, title, description, wage, address, zipCode, city, workTime, companyName, companySiren, companyLogoURL, applied) {
   this.id = id
@@ -37,16 +38,16 @@ export async function getAllAds(token = "", pageCursor = 0, pagePrevious = false
   let promise = toFetch.then(response => (response.json()))
     .then((rep) => {
       let advertisements = []
-      rep["Data"].forEach((jsonAdvertisement) => {
+      rep["data"].forEach((jsonAdvertisement) => {
         advertisements.push(new Advertisement(
-          jsonAdvertisement.ID, jsonAdvertisement.Title,
-          jsonAdvertisement.Description, jsonAdvertisement.Wage,
-          jsonAdvertisement.Address, jsonAdvertisement.ZipCode, jsonAdvertisement.City,
-          jsonAdvertisement.WorkTimeNs / 3600000000000,
-          jsonAdvertisement["Company"].Name, jsonAdvertisement["Company"].Siren,
-          jsonAdvertisement["Company"].LogoURL, jsonAdvertisement.Applied))
+          jsonAdvertisement.id, jsonAdvertisement.title,
+          jsonAdvertisement.description, jsonAdvertisement.wage,
+          jsonAdvertisement.address, jsonAdvertisement.zipCode, jsonAdvertisement.city,
+          jsonAdvertisement.workTimeNs / 3600000000000,
+          jsonAdvertisement["Company"].name, jsonAdvertisement["Company"].siren,
+          jsonAdvertisement["Company"].logoURL, jsonAdvertisement.applied))
       })
-      return [advertisements, rep.Cursors.Previous, rep.Cursors.Next]
+      return [advertisements, rep.cursors.previous, rep.cursors.next]
     })
 
   return await promise

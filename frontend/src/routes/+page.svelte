@@ -334,10 +334,7 @@
                         Logout
                     </Button>
                     {#if userConnected.ID===1}
-                        <Button
-                            on:click={() => {
-                                window.location.href = "/admin";
-                            }}
+                        <Button href="/dashboard"
                             class="m-2"
                             type="primary"
                             >
