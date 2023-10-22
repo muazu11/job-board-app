@@ -333,6 +333,14 @@
                     <Button on:click={logout} class="m-2" type="primary">
                         Logout
                     </Button>
+                    {#if userConnected.ID===1}
+                        <Button href="/dashboard"
+                            class="m-2"
+                            type="primary"
+                            >
+                            Dashboard
+                        </Button>
+                    {/if}
                 {:else}
                     <Button
                         on:click={() => showModal("modalLogIn")}
@@ -769,7 +777,7 @@
                                     tryEdit();
                                 }}
                             >
-                                <Icon data={saveIcon} />
+                                Save
                             </Button>
                             <Button
                                 class="mt-1"
