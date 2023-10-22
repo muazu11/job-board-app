@@ -4,6 +4,7 @@ import (
 	"context"
 	"jobboard/backend/auth"
 	"jobboard/backend/db"
+	"jobboard/backend/server"
 	"jobboard/backend/services/user"
 	jsonutil "jobboard/backend/utils/json"
 
@@ -19,45 +20,14 @@ type service struct {
 	user user.Service
 }
 
-func Init(server *fiber.App, db db.DB, user user.Service, adminAuthorizer fiber.Handler) {
+func Init(app *fiber.App, db db.DB, user user.Service, adminAuthorizer fiber.Handler) {
 	service := service{db: db, user: user}
-	server.Post(apiPathRoot, adminAuthorizer, service.addHandler)
-	server.Get(apiPathRoot+"/:id<int>", adminAuthorizer, service.getHandler)
-	server.Get(apiPathRoot, adminAuthorizer, service.getAllHandler)
-	server.Put(apiPathRoot+"/:id<int>", adminAuthorizer, service.updateHandler)
-	server.Delete(apiPathRoot+"/:id<int>", adminAuthorizer, service.deleteHandler)
-	server.Post(apiPathRoot+"/me", service.applyHandler)
-}
-func (s service) applyHandler(c *fiber.Ctx) error {
-	token, err := auth.TokenFromContext(c)
-	if err != nil {
-		return err
-	}
-	user, err := s.user.GetByToken(c.Context(), token)
-	if err != nil {
-		return err
-	}
-	jsonVal, err := jsonutil.Parse(c.Body())
-	if err != nil {
-		return err
-	}
-	application, err := DecodeApplication(jsonVal)
-	if err != nil {
-		return err
-	}
-	application.ApplicantID = user.ID
-
-	return s.add(c.Context(), application)
-}
-
-func (s service) apply(ctx context.Context, application Application) error {
-	return s.db.QueryRow(
-		ctx, &application.ID, `
-		INSERT INTO applications
-		VALUES (DEFAULT, @advertisement_id, @applicant_id, @message, DEFAULT)
-		RETURNING id`,
-		application.toArgs(),
-	)
+	app.Post(apiPathRoot, adminAuthorizer, server.Create, service.addHandler)
+	app.Get(apiPathRoot+"/:id<int>", adminAuthorizer, service.getHandler)
+	app.Get(apiPathRoot, adminAuthorizer, service.getAllHandler)
+	app.Put(apiPathRoot+"/:id<int>", adminAuthorizer, server.NoContent, service.updateHandler)
+	app.Delete(apiPathRoot+"/:id<int>", adminAuthorizer, server.NoContent, service.deleteHandler)
+	app.Post(apiPathRoot+"/me", server.Create, service.applyHandler)
 }
 
 func (s service) addHandler(c *fiber.Ctx) error {
@@ -69,11 +39,7 @@ func (s service) addHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	err = s.add(c.Context(), application)
-	if err != nil {
-		return err
-	}
-	return c.SendStatus(fiber.StatusCreated)
+	return s.add(c.Context(), application)
 }
 
 func (s service) add(ctx context.Context, application Application) error {
@@ -140,11 +106,7 @@ func (s service) updateHandler(c *fiber.Ctx) error {
 		return err
 	}
 	application.ID = id
-	err = s.update(c.Context(), application)
-	if err != nil {
-		return err
-	}
-	return c.SendStatus(fiber.StatusNoContent)
+	return s.update(c.Context(), application)
 }
 
 func (s service) update(ctx context.Context, application Application) error {
@@ -162,13 +124,41 @@ func (s service) deleteHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	err = s.delete(c.Context(), id)
-	if err != nil {
-		return err
-	}
-	return c.SendStatus(fiber.StatusNoContent)
+	return s.delete(c.Context(), id)
 }
 
 func (s service) delete(ctx context.Context, id int) error {
 	return s.db.Exec(ctx, "DELETE FROM applications WHERE id = $1", id)
+}
+
+func (s service) applyHandler(c *fiber.Ctx) error {
+	token, err := auth.TokenFromContext(c)
+	if err != nil {
+		return err
+	}
+	user, err := s.user.GetByToken(c.Context(), token)
+	if err != nil {
+		return err
+	}
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	application, err := DecodeApplication(jsonVal)
+	if err != nil {
+		return err
+	}
+	application.ApplicantID = user.ID
+
+	return s.add(c.Context(), application)
+}
+
+func (s service) apply(ctx context.Context, application Application) error {
+	return s.db.QueryRow(
+		ctx, &application.ID, `
+		INSERT INTO applications
+		VALUES (DEFAULT, @advertisement_id, @applicant_id, @message, DEFAULT)
+		RETURNING id`,
+		application.toArgs(),
+	)
 }

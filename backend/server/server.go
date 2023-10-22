@@ -20,7 +20,24 @@ import (
 )
 
 const (
-	cacheExpiration = time.Minute * 10
+	cacheExpiration = time.Second * 2
+)
+
+var (
+	Create = func(c *fiber.Ctx) error {
+		err := c.Next()
+		if err != nil {
+			return err
+		}
+		return c.SendStatus(fiber.StatusCreated)
+	}
+	NoContent = func(c *fiber.Ctx) error {
+		err := c.Next()
+		if err != nil {
+			return err
+		}
+		return c.SendStatus(fiber.StatusNoContent)
+	}
 )
 
 type Config struct {

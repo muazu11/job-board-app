@@ -4,6 +4,7 @@ import (
 	"context"
 	"jobboard/backend/auth"
 	"jobboard/backend/db"
+	"jobboard/backend/server"
 	jsonutil "jobboard/backend/utils/json"
 
 	"github.com/gofiber/fiber/v2"
@@ -17,21 +18,21 @@ type Service struct {
 	db db.DB
 }
 
-func Init(server *fiber.App, db db.DB, adminAuthorizer fiber.Handler) Service {
+func Init(app *fiber.App, db db.DB, adminAuthorizer fiber.Handler) Service {
 	Service := Service{db: db}
 
-	server.Post(apiPathRoot, Service.addHandler)
-	server.Get(apiPathRoot+"/:id<int>", adminAuthorizer, Service.getHandler)
-	server.Get(apiPathRoot, adminAuthorizer, Service.getAllHandler)
-	server.Put(apiPathRoot+"/:id<int>", adminAuthorizer, Service.updateHandler)
-	server.Put(apiPathRoot+"/password/:id<int>", adminAuthorizer, Service.updatePasswordHandler)
-	server.Delete(apiPathRoot+"/:id<int>", adminAuthorizer, Service.deleteHandler)
+	app.Post(apiPathRoot, server.Create, Service.addHandler)
+	app.Get(apiPathRoot+"/:id<int>", adminAuthorizer, Service.getHandler)
+	app.Get(apiPathRoot, adminAuthorizer, Service.getAllHandler)
+	app.Put(apiPathRoot+"/:id<int>", adminAuthorizer, server.NoContent, Service.updateHandler)
+	app.Put(apiPathRoot+"/password/:id<int>", adminAuthorizer, Service.updatePasswordHandler)
+	app.Delete(apiPathRoot+"/:id<int>", adminAuthorizer, server.NoContent, Service.deleteHandler)
 
-	server.Get(apiPathRoot+"/me", Service.getMeHandler)
-	server.Put(apiPathRoot+"/me", Service.updateMeHandler)
-	server.Put(apiPathRoot+"/password/me", Service.updateMyPasswordHandler)
-	server.Delete(apiPathRoot+"/me", Service.deleteMeHandler)
-	server.Post(apiPathRoot+"/login", Service.loginHandler)
+	app.Get(apiPathRoot+"/me", Service.getMeHandler)
+	app.Put(apiPathRoot+"/me", server.NoContent, Service.updateMeHandler)
+	app.Put(apiPathRoot+"/password/me", Service.updateMyPasswordHandler)
+	app.Delete(apiPathRoot+"/me", server.NoContent, Service.deleteMeHandler)
+	app.Post(apiPathRoot+"/login", Service.loginHandler)
 
 	return Service
 }
@@ -56,11 +57,7 @@ func (s Service) addHandler(c *fiber.Ctx) error {
 		return err
 	}
 	account.UserID = user.ID
-	err = s.addAccount(c.Context(), account)
-	if err != nil {
-		return err
-	}
-	return c.SendStatus(fiber.StatusCreated)
+	return s.addAccount(c.Context(), account)
 }
 
 func (s Service) addAccount(ctx context.Context, account Account) error {
@@ -155,11 +152,7 @@ func (s Service) updateHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	err = s.updateRole(c.Context(), id, Role(role))
-	if err != nil {
-		return err
-	}
-	return c.SendStatus(fiber.StatusNoContent)
+	return s.updateRole(c.Context(), id, Role(role))
 }
 
 func (s Service) update(ctx context.Context, user User) error {
@@ -223,11 +216,7 @@ func (s Service) deleteHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	err = s.delete(c.Context(), id)
-	if err != nil {
-		return err
-	}
-	return c.SendStatus(fiber.StatusNoContent)
+	return s.delete(c.Context(), id)
 }
 
 func (s Service) delete(ctx context.Context, id int) error {
@@ -272,11 +261,7 @@ func (s Service) updateMeHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	err = s.updateByToken(c.Context(), token, user)
-	if err != nil {
-		return err
-	}
-	return c.SendStatus(fiber.StatusNoContent)
+	return s.updateByToken(c.Context(), token, user)
 }
 
 func (s Service) updateByToken(ctx context.Context, token string, user User) error {
@@ -312,11 +297,7 @@ func (s Service) updateMyPasswordHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	err = c.JSON(tokenWrap{Token: token})
-	if err != nil {
-		return err
-	}
-	return c.SendStatus(fiber.StatusNoContent)
+	return c.JSON(tokenWrap{Token: token})
 }
 
 func (s Service) updatePasswordByToken(
@@ -343,11 +324,7 @@ func (s Service) deleteMeHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	err = s.deleteByToken(c.Context(), token)
-	if err != nil {
-		return err
-	}
-	return c.SendStatus(fiber.StatusNoContent)
+	return s.deleteByToken(c.Context(), token)
 }
 
 func (s Service) deleteByToken(ctx context.Context, token string) error {
