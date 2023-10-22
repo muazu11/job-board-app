@@ -101,7 +101,7 @@
 
     async function tryEdit() {
         if (userPassword !== "") {
-            if (userPassword.length > 6) {
+            if (userPassword.length >= 8) {
                 let updateSuccess = await updateProfile(
                     userEmail,
                     userName,
@@ -586,21 +586,13 @@
                     {/if}
                     <Modal.Content.Body slot="body">
                         <form>
-                            <Input
-                                bind:value={newEmail}
-                                id="email"
-                                name="login"
-                                on:change={() => {
-                                    if (
-                                        !/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(
-                                            newEmail
-                                        )
-                                    ) {
-                                        setRedBorder("email");
-                                    } else {
-                                        document.getElementById(
-                                            "email"
-                                        ).style.border = "1px solid green";
+                            <Input bind:value={newEmail} id="email" name="login"
+                                   on:change={()=>{
+                                if(!(/^[a-zA-Z0-9\-\.]+@[a-zA-Z0-9\-\.]+\.[a-zA-Z0-9\-\.]+$/.test(newEmail))){
+                                    setRedBorder("email")
+                                }
+                                else{
+                                        document.getElementById("email").style.border = "1px solid green";
                                     }
                                 }}
                             >
@@ -612,7 +604,7 @@
                                 type="password"
                                 name="password"
                                 on:input={() => {
-                                    if (newPassword.length < 6) {
+                                    if (newPassword.length < 8) {
                                         setRedBorder("password");
                                     } else {
                                         document.getElementById(
@@ -623,7 +615,15 @@
                             >
                                 <Input.Label slot="label">password</Input.Label>
                             </Input>
-                            <Input bind:value={newName} type="text" name="name">
+                            <Input bind:value={newName} type="text" name="name"
+                                on:change={()=>{
+                                if(newName.length<1){
+                                    setRedBorder("name")
+                                }
+                                else{
+                                        document.getElementById("name").style.border = "1px solid green";
+                                    }
+                                }}>
                                 <Input.Label slot="label">name</Input.Label>
                             </Input>
                             <Input
@@ -640,7 +640,7 @@
                                 name="tel"
                                 on:change={() => {
                                     if (
-                                        !/^[+](\d{3})\)?(\d{3})(\d{5,6})$|^(\d{10,10})$/.test(
+                                        !/(\+\d{2}|0)[1-9]\d{8}$/.test(
                                             newTel
                                         )
                                     ) {
