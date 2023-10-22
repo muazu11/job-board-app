@@ -15,8 +15,8 @@ services:
 
   jobboard-back:
     build:
-      context: ../
-      dockerfile: docker/backend.Dockerfile
+      context: ../..
+      dockerfile: docker/backend/Dockerfile
     depends_on:
       - postgres
     environment:
@@ -35,14 +35,5 @@ services:
       - "${API_PORT}:${API_PORT}"
     restart: unless-stopped
 
-  jobboard-front:
-    build:
-      context: ../
-      dockerfile: docker/frontend.Dockerfile
-    environment:
-      PORT: ${FRONT_PORT}
-    restart: unless-stopped
-    ports:
-      - "${FRONT_PORT}:${FRONT_PORT}"
 volumes:
   postgres:
