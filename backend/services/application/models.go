@@ -9,7 +9,7 @@ import (
 
 type Application struct {
 	ID              int       `json:"id"`
-	AdvertisementID int       `json:"advertismentID"`
+	AdvertisementID int       `json:"advertisementID"`
 	ApplicantID     int       `json:"applicantID"`
 	Message         string    `json:"message"`
 	CreatedAt       time.Time `json:"createdAt"`

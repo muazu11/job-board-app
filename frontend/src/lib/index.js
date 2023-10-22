@@ -1,7 +1,7 @@
 import { env } from '$env/dynamic/public'
 
-const baseRoute = "http://" + env.PUBLIC_API_HOST + ":" + env.PUBLIC_API_PORT + "/"
-//const baseRoute = "http://" + "localhost" + ":" + "3000" + "/"
+//const baseRoute = "http://" + env.PUBLIC_API_HOST + ":" + env.PUBLIC_API_PORT + "/"
+const baseRoute = "http://" + "localhost" + ":" + "3000" + "/"
 
 export function Advertisement(id, title, description, wage, address, zipCode, city, workTime, companyName, companySiren, companyLogoURL, applied) {
   this.id = id
@@ -19,7 +19,7 @@ export function Advertisement(id, title, description, wage, address, zipCode, ci
 }
 
 export async function getAllAds(token = "", pageCursor = 0, pagePrevious = false) {
-  let url = baseRoute + 'advertisements/with_detail?'+ new URLSearchParams({
+  let url = baseRoute + 'advertisements/with_detail?' + new URLSearchParams({
     pageCursor: pageCursor,
     pagePrevious: pagePrevious
   })
@@ -133,159 +133,137 @@ export async function sendCredentials(login, password) {
 
 export async function createUser(email, password, name, surname, tel, birthDate) {
   let url = baseRoute + 'users'
-  let promise = fetch(url, { method: 'POST'
-  , body: JSON.stringify({
+  let promise = fetch(url, {
+    method: 'POST'
+    , body: JSON.stringify({
       email: email,
       name: name,
       surname: surname,
       phone: tel,
       dateOfBirthUTC: birthDate,
       password: password,
-      role: "user"})
+      role: "user"
+    })
   })
-    .then(response => {return response.status===201})
+    .then(response => { return response.status === 201 })
     .catch(error => {
       console.log(error)
     })
   return await promise
 }
 
-export async function createAdvertisement(title, description, companyID, address, city, zipCode,workTimeNs) {
+export async function createAdvertisement(title, description, companyID, address, city, zipCode, workTimeNs) {
   let url = baseRoute + 'advertisements'
-  let promise = fetch(url, { method: 'POST'
+  let promise = fetch(url, {
+    method: 'POST'
     , body: JSON.stringify({
-        title: title,
-        description: description,
-        company_id: companyID,
-        address: address,
-        city: city,
-        zip_code: zipCode,
-        work_time_ns: workTimeNs,
+      title: title,
+      description: description,
+      company_id: companyID,
+      address: address,
+      city: city,
+      zip_code: zipCode,
+      work_time_ns: workTimeNs,
     })
   })
-      .then(response => {return response.status===201})
-      .catch(error => {
-        console.log(error)
-      })
+    .then(response => { return response.status === 201 })
+    .catch(error => {
+      console.log(error)
+    })
   return await promise
 }
 
 export async function createApplication(advertisementID, applicantID, message) {
   let url = baseRoute + 'advertisements'
-  let promise = fetch(url, { method: 'POST'
+  let promise = fetch(url, {
+    method: 'POST'
     , body: JSON.stringify({
-        advertisement_id: advertisementID,
-        applicant_id: applicantID,
-        message: message,
+      advertisement_id: advertisementID,
+      applicant_id: applicantID,
+      message: message,
     })
   })
-      .then(response => {return response.status===201})
-      .catch(error => {
-        console.log(error)
-      })
+    .then(response => { return response.status === 201 })
+    .catch(error => {
+      console.log(error)
+    })
   return await promise
 }
 
 export async function createCompany(name, logoURL, siren) {
   let url = baseRoute + 'advertisements'
-  let promise = fetch(url, { method: 'POST'
+  let promise = fetch(url, {
+    method: 'POST'
     , body: JSON.stringify({
-        name: name,
-        logoURL: logoURL,
-        siren: siren,
+      name: name,
+      logoURL: logoURL,
+      siren: siren,
     })
   })
-      .then(response => {return response.status===201})
-      .catch(error => {
-        console.log(error)
-      })
-  return await promise
-}
-export async function getAllApplications(token, pageCursor = 0, pagePrevious = false){
-  let url = baseRoute + 'applications?'+ new URLSearchParams({
-    pageCursor: pageCursor,
-    pagePrevious: pagePrevious
-  })
-  let promise = fetch(url, { method: 'GET',headers: {
-      "Authorization": "Basic " + token
-    }
-  })
-      .then(response => (response => (response.json())))
-      .then((data) => {
-        return data
-      })
-      .catch(error => {
-        console.log(error)
-      })
-  return await promise
-}
-export async function getAllUsers(token, pageCursor = 0, pagePrevious = false){
-  let url = baseRoute + 'users?'+new URLSearchParams({
-    pageCursor: pageCursor,
-    pagePrevious: pagePrevious
-  })
-  let promise = fetch(url, { method: 'GET',headers: {
-      "Authorization": "Basic " + token
-    }
-  })
-      .then(response => (response => (response.json())))
-      .then((data) => {
-        return data
-      })
-      .catch(error => {
-        console.log(error)
-      })
+    .then(response => { return response.status === 201 })
+    .catch(error => {
+      console.log(error)
+    })
   return await promise
 }
 
-
-export async function getAllcompanies(token, pageCursor = 0, pagePrevious = false){
-  let url = baseRoute + 'companies?'+new URLSearchParams({
+async function getAll(resource, token, pageCursor, pagePrevious) {
+  let url = baseRoute + resource + '?' + new URLSearchParams({
     pageCursor: pageCursor,
     pagePrevious: pagePrevious
   })
-  let promise = fetch(url, { method: 'GET',headers: {
+  let response = await fetch(url, {
+    method: 'GET', headers: {
       "Authorization": "Basic " + token
     }
   })
-      .then(response => (response => (response.json())))
-      .then((data) => {
-            return data
-          })
-      .catch(error => {
-        console.log(error)
-      })
-  return await promise
+  return await response.json()
+}
+
+export async function getAllUsers(token, pageCursor = 0, pagePrevious = false) {
+  return await getAll("users", token, pageCursor, pagePrevious)
+}
+
+export async function getAllCompanies(token, pageCursor = 0, pagePrevious = false) {
+  return await getAll("companies", token, pageCursor, pagePrevious)
+}
+
+export async function getAllAdvertisements(token, pageCursor = 0, pagePrevious = false) {
+  return await getAll("advertisements", token, pageCursor, pagePrevious)
+}
+
+export async function getAllApplications(token, pageCursor = 0, pagePrevious = false) {
+  return await getAll("applications", token, pageCursor, pagePrevious)
 }
 
 export async function updateAdvertisement(id, title, description, wage, address, zipCode, city, workTime, companyName, companySiren, companyLogoURL, applied, token) {
-    let url = baseRoute + 'advertisements/' + id
-    let promise = fetch(url, {
-        method: 'PUT',
-        headers: {
-        "Authorization": "Basic " + token
-        },
-        body: JSON.stringify({
-          title: title,
-          description: description,
-          wage: wage,
-          address: address,
-          zip_code: zipCode,
-          city: city,
-          work_time_ns: workTime,
-          company_name: companyName,
-          company_siren: companySiren,
-          company_logo_url: companyLogoURL,
-          applied: applied
-        })
+  let url = baseRoute + 'advertisements/' + id
+  let promise = fetch(url, {
+    method: 'PUT',
+    headers: {
+      "Authorization": "Basic " + token
+    },
+    body: JSON.stringify({
+      title: title,
+      description: description,
+      wage: wage,
+      address: address,
+      zip_code: zipCode,
+      city: city,
+      work_time_ns: workTime,
+      company_name: companyName,
+      company_siren: companySiren,
+      company_logo_url: companyLogoURL,
+      applied: applied
     })
-        .then(data => {
-            return data.status
-        })
-        .catch(error => {
-            return false
-        })
-    return await promise
+  })
+    .then(data => {
+      return data.status
+    })
+    .catch(error => {
+      return false
+    })
+  return await promise
 }
 
 export async function updateApplication(id, message, advertisementID, applicantID, token) {
@@ -296,17 +274,17 @@ export async function updateApplication(id, message, advertisementID, applicantI
       "Authorization": "Basic " + token
     },
     body: JSON.stringify({
-        message: message,
-        advertisement_id: advertisementID,
-        applicant_id: applicantID,
+      message: message,
+      advertisement_id: advertisementID,
+      applicant_id: applicantID,
     })
   })
-      .then(data => {
-        return data.status
-      })
-      .catch(error => {
-        return false
-      })
+    .then(data => {
+      return data.status
+    })
+    .catch(error => {
+      return false
+    })
   return await promise
 }
 
@@ -318,17 +296,17 @@ export async function updateCompany(id, name, logoURL, siren, token) {
       "Authorization": "Basic " + token
     },
     body: JSON.stringify({
-        name: name,
-        logoURL: logoURL,
-        siren: siren,
+      name: name,
+      logoURL: logoURL,
+      siren: siren,
     })
   })
-      .then(data => {
-        return data.status
-      })
-      .catch(error => {
-        return false
-      })
+    .then(data => {
+      return data.status
+    })
+    .catch(error => {
+      return false
+    })
   return await promise
 }
 
@@ -340,31 +318,31 @@ export async function updateUser(id, email, name, surname, tel, birthDate, token
       "Authorization": "Basic " + token
     },
     body: JSON.stringify({
-        email: email,
-        name: name,
-        surname: surname,
-        phone: tel,
-        dateOfBirthUTC: birthDate,
-        role: "user"
+      email: email,
+      name: name,
+      surname: surname,
+      phone: tel,
+      dateOfBirthUTC: birthDate,
+      role: "user"
     })
   })
-      .then(data => {
-        return true
-      })
-      .catch(error => {
-        return false
-      })
+    .then(data => {
+      return true
+    })
+    .catch(error => {
+      return false
+    })
   return await promise
 }
 
 export async function deleteAdvertisement(id, token) {
   let url = baseRoute + 'advertisements/' + id
-    let promise = fetch(url, {
-        method: 'DELETE',
-        headers: {
-          "Authorization": "Basic " + token
-        }
-    })
+  let promise = fetch(url, {
+    method: 'DELETE',
+    headers: {
+      "Authorization": "Basic " + token
+    }
+  })
 }
 export function deleteApplication(id, token) {
   let url = baseRoute + 'applications/' + id
