@@ -337,8 +337,18 @@ func (s Service) deleteByToken(ctx context.Context, token string) error {
 }
 
 func (s Service) loginHandler(c *fiber.Ctx) error {
-	email := c.Query("email")
-	password := c.Query("password")
+	jsonVal, err := jsonutil.Parse(c.Body())
+	if err != nil {
+		return err
+	}
+	password, err := jsonVal.Get("password").String()
+	if err != nil {
+		return err
+	}
+	email, err := jsonVal.Get("email").String()
+	if err != nil {
+		return err
+	}
 	account, err := s.getAccountByEmail(c.Context(), email)
 	if err != nil {
 		return err
