@@ -78,11 +78,7 @@ func (s service) get(ctx context.Context, id int) (Advertisement, error) {
 }
 
 func (s service) getAllHandler(c *fiber.Ctx) error {
-	jsonVal, err := jsonutil.Parse(c.Body())
-	if err != nil {
-		return err
-	}
-	pageRef, err := db.DecodePageRef(jsonVal)
+	pageRef, err := db.PageRefFromContext(c)
 	if err != nil {
 		return err
 	}
@@ -153,11 +149,7 @@ func (s service) getAllWithDetailHandler(c *fiber.Ctx) error {
 	} else if !errors.Is(err, auth.ErrInvalidToken) {
 		return err
 	}
-	jsonVal, err := jsonutil.Parse(c.Body())
-	if err != nil {
-		return err
-	}
-	pageRef, err := db.DecodePageRef(jsonVal)
+	pageRef, err := db.PageRefFromContext(c)
 	if err != nil {
 		return err
 	}

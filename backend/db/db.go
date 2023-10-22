@@ -2,11 +2,14 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"jobboard/backend/services"
 	jsonutil "jobboard/backend/utils/json"
+	"strconv"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sanggonlee/gosq"
@@ -124,21 +127,34 @@ func NewPageRef(cursor any, previous bool) (PageRef, error) {
 	return pageRef, nil
 }
 
-func DecodePageRef(data jsonutil.Value) (pageRef PageRef, err error) {
-	pageRef.previous, err = data.Get("pagePrevious").Bool()
+func PageRefFromContext(c *fiber.Ctx) (pageRef PageRef, err error) {
+	b, _ := json.Marshal(c.Queries())
+	data, err := jsonutil.Parse(b)
 	if err != nil {
 		return
 	}
-	pageRef.cursor, err = data.Get("pageCursor").Float()
-	if err == nil {
-		pageRef.emptyCursor = pageRef.cursor == 0.
-		return
-	}
-	pageRef.cursor, err = data.Get("pageCursor").String()
+	previous, err := data.Get("pagePrevious").String()
 	if err != nil {
 		return
 	}
-	pageRef.emptyCursor = pageRef.cursor == ""
+	if previous != "" {
+		pageRef.previous, err = strconv.ParseBool(previous)
+		if err != nil {
+			return pageRef, jsonutil.ErrInvalidField{}
+		}
+	}
+	cursorStr, err := data.Get("pageCursor").String()
+	if err != nil {
+		return
+	}
+	cursorFloat, err := strconv.ParseFloat(cursorStr, 64)
+	if err != nil {
+		pageRef.cursor = cursorStr
+		pageRef.emptyCursor = pageRef.cursor == ""
+		return pageRef, nil
+	}
+	pageRef.cursor = cursorFloat
+	pageRef.emptyCursor = pageRef.cursor == 0.
 	return
 }
 

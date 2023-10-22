@@ -65,11 +65,7 @@ func (s service) get(ctx context.Context, id int) (Company, error) {
 }
 
 func (s service) getAllHandler(c *fiber.Ctx) error {
-	jsonVal, err := jsonutil.Parse(c.Body())
-	if err != nil {
-		return err
-	}
-	pageRef, err := db.DecodePageRef(jsonVal)
+	pageRef, err := db.PageRefFromContext(c)
 	if err != nil {
 		return err
 	}
