@@ -142,7 +142,11 @@ func (s service) addHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return s.add(c.Context(), &advertisement)
+	err = s.add(c.Context(), &advertisement)
+	if err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusCreated)
 }
 
 func (s service) getHandler(c *fiber.Ctx) error {
@@ -187,7 +191,11 @@ func (s service) updateHandler(c *fiber.Ctx) error {
 		return err
 	}
 	advertisement.ID = id
-	return s.update(c.Context(), advertisement)
+	err = s.update(c.Context(), advertisement)
+	if err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (s service) deleteHandler(c *fiber.Ctx) error {
@@ -195,7 +203,11 @@ func (s service) deleteHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return s.delete(c.Context(), id)
+	err = s.delete(c.Context(), id)
+	if err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (s service) getAllWithDetailHandler(c *fiber.Ctx) error {

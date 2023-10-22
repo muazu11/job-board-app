@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"unicode/utf8"
@@ -20,9 +19,10 @@ const (
 )
 
 var (
-	ErrInvalidToken     = errors.New("invalid or missing authorization header")
+	ErrInvalidToken     = fmt.Errorf("invalid or missing authorization header")
+	ErrInvalidPassword  = fmt.Errorf("incorrect password")
 	ErrPasswordTooShort = fmt.Errorf(
-		"passwords must contain at least %d characters", minPasswordLen,
+		"passwords must have at least %d characters", minPasswordLen,
 	)
 )
 
@@ -35,7 +35,11 @@ func HashPassword(password string) (string, error) {
 }
 
 func ValidatePassword(password, hash string) error {
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	if err != nil {
+		return ErrInvalidPassword
+	}
+	return nil
 }
 
 func TokenFromContext(c *fiber.Ctx) (string, error) {
@@ -68,22 +72,14 @@ func (a *Auth) NewMiddleware(allowedRoles ...string) fiber.Handler {
 	return func(c *fiber.Ctx) (err error) {
 		token, err := TokenFromContext(c)
 		if err != nil {
-			return unauthorized(c)
+			return err
 		}
-		role, err := a.store.GetRole(c.Context(), token)
-		if err != nil {
-			return unauthorized(c)
-		}
+		role, _ := a.store.GetRole(c.Context(), token)
 
 		if !slices.Contains(allowedRoles, role) {
-			return unauthorized(c)
+			return fiber.ErrUnauthorized
 		}
 
 		return c.Next()
 	}
-}
-
-func unauthorized(c *fiber.Ctx) error {
-	c.Set(fiber.HeaderWWWAuthenticate, "Basic realm=Restricted")
-	return c.SendStatus(fiber.StatusUnauthorized)
 }

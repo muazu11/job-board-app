@@ -180,7 +180,11 @@ func (s Service) addHandler(c *fiber.Ctx) error {
 		return err
 	}
 	account.UserID = user.ID
-	return s.addAccount(c.Context(), account)
+	err = s.addAccount(c.Context(), account)
+	if err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusCreated)
 }
 
 func (s Service) getHandler(c *fiber.Ctx) error {
@@ -235,7 +239,11 @@ func (s Service) updateHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return s.updateRole(c.Context(), id, Role(role))
+	err = s.updateRole(c.Context(), id, Role(role))
+	if err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (s Service) updatePasswordHandler(c *fiber.Ctx) error {
@@ -264,7 +272,11 @@ func (s Service) deleteHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return s.delete(c.Context(), id)
+	err = s.delete(c.Context(), id)
+	if err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (s Service) getMeHandler(c *fiber.Ctx) error {
@@ -293,7 +305,11 @@ func (s Service) updateMeHandler(c *fiber.Ctx) error {
 		return err
 	}
 
-	return s.updateByToken(c.Context(), token, user)
+	err = s.updateByToken(c.Context(), token, user)
+	if err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (s Service) updateMyPasswordHandler(c *fiber.Ctx) error {
@@ -314,7 +330,11 @@ func (s Service) updateMyPasswordHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(tokenWrap{Token: token})
+	err = c.JSON(tokenWrap{Token: token})
+	if err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (s Service) deleteMeHandler(c *fiber.Ctx) error {
@@ -322,7 +342,11 @@ func (s Service) deleteMeHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return s.deleteByToken(c.Context(), token)
+	err = s.deleteByToken(c.Context(), token)
+	if err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (s Service) loginHandler(c *fiber.Ctx) error {
