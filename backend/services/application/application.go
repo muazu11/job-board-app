@@ -140,7 +140,12 @@ func (s service) applyHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	application, err := DecodeApplication(jsonVal)
+	var application Application
+	application.AdvertisementID, err = jsonVal.Get("advertisementID").Int()
+	if err != nil {
+		return err
+	}
+	application.Message, err = jsonVal.Get("message").String()
 	if err != nil {
 		return err
 	}

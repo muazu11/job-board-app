@@ -155,7 +155,7 @@
 
     async function apply(idAvert, message) {
         await submitApply(message, idAvert, getCookie("token"));
-        let resp = await getAllAds(getCookie("token"), previous, true);
+        let resp = await getAllAds(getCookie("token"), next);
         allAdv = resp[0];
         flushEntry();
     }
@@ -276,8 +276,8 @@
         document.getElementById(id).style.border = "1px solid red";
     }
 
-    let previous;
-    let next;
+    let previous = false;
+    let next = 0;
 
     /*
         async function onPreviousClick() {
@@ -305,7 +305,7 @@
     // Need to use onMount to execute after the DOM is ready
     onMount(async () => {
         await fillUserInfo();
-        let resp = await getAllAds(getCookie("token"));
+        let resp = await getAllAds(getCookie("token"),next);
         allAdv = resp[0];
         next = resp[2];
         previous = resp[1];
@@ -462,7 +462,7 @@
                                                                 Siren : {advertisement.companySiren}
                                                             </p>
                                                             <Button
-                                                                disabled={advertisement.applied}
+                                                                disabled={advertisement.Applied}
                                                                 type="primary"
                                                                 {loading}
                                                                 on:click={() =>
@@ -470,7 +470,7 @@
                                                                         advertisement.id
                                                                     )}
                                                             >
-                                                                {#if advertisement.applied}
+                                                                {#if advertisement.Applied}
                                                                     Applied
                                                                 {:else}
                                                                     Apply

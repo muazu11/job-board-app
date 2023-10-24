@@ -3,7 +3,7 @@ import { env } from '$env/dynamic/public'
 //const baseRoute = "http://" + env.PUBLIC_API_HOST + ":" + env.PUBLIC_API_PORT + "/"
 const baseRoute = "http://" + "localhost" + ":" + "3000" + "/"
 
-export function Advertisement(id, title, description, wage, address, zipCode, city, workTime, companyName, companySiren, companyLogoURL, applied) {
+export function Advertisement(id, title, description, wage, address, zipCode, city, workTime, companyName, companySiren, companyLogoURL, Applied) {
   this.id = id
   this.title = title
   this.description = description
@@ -15,7 +15,7 @@ export function Advertisement(id, title, description, wage, address, zipCode, ci
   this.companyName = companyName
   this.companySiren = companySiren
   this.companyLogoURL = companyLogoURL
-  this.applied = applied
+  this.Applied = Applied
 }
 
 export async function getAllAds(token = "", pageCursor = 0, pagePrevious = false) {
@@ -23,14 +23,15 @@ export async function getAllAds(token = "", pageCursor = 0, pagePrevious = false
     pageCursor: pageCursor,
     pagePrevious: pagePrevious
   })
-  let toFetch = fetch(url)
+  let headers = {}
   if (token !== "" && token !== "undefined") {
-    toFetch = fetch(url, {
-      headers: {
+    headers = {
         "Authorization": "Basic " + token
-      },
-    })
+      }
   }
+  let toFetch = fetch(url,{
+    headers: headers
+  })
   let promise = toFetch.then(response => (response.json()))
     .then((rep) => {
       let advertisements = []
@@ -41,7 +42,7 @@ export async function getAllAds(token = "", pageCursor = 0, pagePrevious = false
           jsonAdvertisement.address, jsonAdvertisement.zipCode, jsonAdvertisement.city,
           jsonAdvertisement.workTimeNs / 3600000000000,
           jsonAdvertisement["Company"].name, jsonAdvertisement["Company"].siren,
-          jsonAdvertisement["Company"].logoURL, jsonAdvertisement.applied))
+          jsonAdvertisement["Company"].logoURL, jsonAdvertisement.Applied))
       })
       return [advertisements, rep.cursors.previous, rep.cursors.next]
     })
@@ -52,13 +53,14 @@ export async function getAllAds(token = "", pageCursor = 0, pagePrevious = false
 }
 
 export async function submitApply(message, advertisement_ID, token) {
-  let url = baseRoute + 'applications/me?' + new URLSearchParams({
-    message: message,
-    advertisement_id: advertisement_ID,
-  })
+  let url = baseRoute + 'applications/me?'
 
   let promise = await fetch(url, {
     method: 'POST',
+    body: JSON.stringify({
+        message: message,
+        advertisementID: advertisement_ID
+    }),
     headers: {
       "Authorization": "Basic " + token
     },
@@ -253,8 +255,7 @@ export async function updateAdvertisement(id, title, description, wage, address,
       work_time_ns: workTime,
       company_name: companyName,
       company_siren: companySiren,
-      company_logo_url: companyLogoURL,
-      applied: applied
+      company_logo_url: companyLogoURL
     })
   })
     .then(data => {

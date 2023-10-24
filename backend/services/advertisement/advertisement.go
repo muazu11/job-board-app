@@ -3,6 +3,7 @@ package advertisement
 import (
 	"context"
 	"errors"
+	"fmt"
 	"jobboard/backend/auth"
 	"jobboard/backend/db"
 	"jobboard/backend/server"
@@ -141,6 +142,7 @@ func (s service) delete(ctx context.Context, id int) error {
 func (s service) getAllWithDetailHandler(c *fiber.Ctx) error {
 	var user user.User
 	token, err := auth.TokenFromContext(c)
+	fmt.Println(token, err)
 	if err == nil {
 		user, err = s.user.GetByToken(c.Context(), token)
 		if err != nil {
@@ -154,10 +156,12 @@ func (s service) getAllWithDetailHandler(c *fiber.Ctx) error {
 		return err
 	}
 
+	fmt.Println(user.ID)
 	advertisements, cursors, err := s.getAllWithDetail(c.Context(), pageRef, user.ID)
 	if err != nil {
 		return err
 	}
+	fmt.Println(advertisements[0].Applied)
 	return c.JSON(db.NewPage(cursors, advertisements))
 }
 
