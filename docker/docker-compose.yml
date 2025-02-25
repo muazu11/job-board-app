@@ -1,0 +1,81 @@
+version: '3.6'
+
+services:
+
+  postgres:
+    image: postgres:17.3-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /data/postgres
+    volumes:
+      - postgres:/data/postgres
+      - ../backend/db/migrations/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ../backend/db/migrations/admin_user.sql:/docker-entrypoint-initdb.d/02_admin_user.sql
+      - ./fake-data.sql:/docker-entrypoint-initdb.d/03_fake_data.sql
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    restart: unless-stopped
+    networks:
+      - job-board-network
+
+  jobboard-back:
+    build:
+      context: ../backend
+      dockerfile: ../backend/Dockerfile
+    depends_on:
+      - postgres 
+    env_file: .env
+    environment:
+      SERVICES_ADMIN_EMAIL: ${ADMIN_EMAIL}
+      SERVICES_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      SERVER_PORT: ${API_PORT}
+      SERVER_LOGS: ${API_LOGS}
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_HOST: ${POSTGRES_HOST}
+      DB_PORT: ${POSTGRES_PORT}
+      DB_PAGE_LIMIT: ${PAGE_LIMIT}
+    ports:
+      - "${API_PORT}:${API_PORT}"
+    restart: unless-stopped
+    networks:
+      - job-board-network
+
+  jobboard-front:
+    build:
+      context: ../frontend
+      dockerfile: ../frontend/Dockerfile
+    env_file: .env
+    environment:
+      PORT: ${FRONT_PORT}
+      PUBLIC_API_PORT: ${API_PORT}
+      PUBLIC_API_HOST: ${API_HOST}
+    restart: unless-stopped
+    ports:
+      - "${FRONT_PORT}:${FRONT_PORT}"
+    networks:
+      - job-board-network
+
+  redis:
+    image: redis:7.4.2-alpine     
+    container_name: redis_container
+    restart: unless-stopped
+    env_file: .env
+    command: redis-server --save 60 1 --loglevel warning --requirepass ${REDIS_PASSWORD} --timeout 300
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data/redis 
+    networks:
+      - job-board-network
+
+networks:
+  job-board-network:
+    driver: bridge
+
+volumes:
+  redis-data: 
+  postgres:
